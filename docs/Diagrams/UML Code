@@ -6,15 +6,37 @@ flowchart LR
         UC2((Book Appointment))
         UC3((View Medical Records))
         UC4((Check Availability))
-        UC5((Update Notes))
-        UC6((View Schedule))
+        UC5((Update Clinical Notes))
+        UC6((View Daily Schedule))
+        UC7((Register New Patient))
+        UC8((Manage Appointments))
+        UC9((Receive Confirmation))
+        
+        %% Include Relationships (Mandatory)
+        UC2 -.-> |include| UC1
+        UC3 -.-> |include| UC1
+        UC4 -.-> |include| UC1
+        UC5 -.-> |include| UC1
+        UC6 -.-> |include| UC1
+        UC8 -.-> |include| UC1
+        
+        %% Extend Relationships (Optional/Conditional)
+        UC9 -.-> |extend| UC2
     end
 
-    Patient((Patient)) --- UC1
+    %% Actor Inheritance
+    User((System User)) --- UC1
+    Patient((Patient)) -- inherits --- User
+    Doctor((Doctor)) -- inherits --- User
+    Admin((Admin)) -- inherits --- User
+
+    %% Specific Associations
     Patient --- UC2
     Patient --- UC3
     Patient --- UC4
-
-    Doctor((Doctor)) --- UC1
+    
     Doctor --- UC5
     Doctor --- UC6
+    
+    Admin --- UC7
+    Admin --- UC8
