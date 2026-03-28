@@ -4,6 +4,9 @@ erDiagram
     PATIENT ||--o{ APPOINTMENT : "books"
     DOCTOR ||--o{ APPOINTMENT : "attends"
     PATIENT ||--o{ MEDICAL_RECORD : "owns"
+    DOCTOR ||--o{ MEDICAL_RECORD : "authors"
+    ADMIN ||--o{ PATIENT : "registers"
+    ADMIN ||--o{ APPOINTMENT : "manages"
     
     PATIENT {
         string nhs_number PK
@@ -11,6 +14,7 @@ erDiagram
         string dob
         string address
         string password_hash
+        datetime created_at
     }
     
     DOCTOR {
@@ -18,6 +22,12 @@ erDiagram
         string name
         string specialty
         string availability_json
+    }
+
+    ADMIN {
+        string admin_id PK
+        string username
+        string password_hash
     }
     
     APPOINTMENT {
@@ -31,6 +41,7 @@ erDiagram
     MEDICAL_RECORD {
         int record_id PK
         string nhs_number FK
+        string doctor_id FK "Authored by"
         string notes
         date entry_date
     }
