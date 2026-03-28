@@ -1,0 +1,20 @@
+Mermaid.js code
+
+flowchart LR
+    subgraph CarePoint_HMS [CarePoint Hospital System]
+        UC1((Login))
+        UC2((Book Appointment))
+        UC3((View Medical Records))
+        UC4((Check Availability))
+        UC5((Update Notes))
+        UC6((View Schedule))
+    end
+
+    Patient((Patient)) --- UC1
+    Patient --- UC2
+    Patient --- UC3
+    Patient --- UC4
+
+    Doctor((Doctor)) --- UC1
+    Doctor --- UC5
+    Doctor --- UC6
