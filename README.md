@@ -16,6 +16,5 @@ This is a patient-centric system designed to prioritize self-service through a d
 
 ### 📈 Agile Methodology
 This project utilizes the Scrum Framework, documenting progression through:
-- Sprint 1: Planning, User Stories, and UML Design.
-- Sprint 2: Core Build and Authentication.
-- Sprint 3: Final Features, Testing, and Deployment.
+* Sprint 1: Planning & Design: Requirement engineering, User Stories, and UML architectural design.
+* Sprint 2: Core Build & Testing: Full development of the patient portal, booking interface, and rigorous unit testing.
