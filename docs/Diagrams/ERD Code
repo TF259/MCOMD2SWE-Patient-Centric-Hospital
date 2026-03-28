@@ -1,0 +1,36 @@
+Mermaid.js code
+
+erDiagram
+    PATIENT ||--o{ APPOINTMENT : "books"
+    DOCTOR ||--o{ APPOINTMENT : "attends"
+    PATIENT ||--o{ MEDICAL_RECORD : "owns"
+    
+    PATIENT {
+        string nhs_number PK
+        string full_name
+        string dob
+        string address
+        string password_hash
+    }
+    
+    DOCTOR {
+        string doctor_id PK
+        string name
+        string specialty
+        string availability_json
+    }
+    
+    APPOINTMENT {
+        int appointment_id PK
+        string nhs_number FK
+        string doctor_id FK
+        datetime slot_time
+        string status
+    }
+    
+    MEDICAL_RECORD {
+        int record_id PK
+        string nhs_number FK
+        string notes
+        date entry_date
+    }
