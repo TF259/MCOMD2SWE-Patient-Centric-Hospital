@@ -1,28 +1,28 @@
 <script src="https://cdn.tailwindcss.com"></script>
-<div class="min-h-screen bg-gray-100">
-    <nav class="bg-[#005eb8] text-white p-4 shadow-md">
-        <div class="max-w-5xl mx-auto flex justify-between items-center">
-            <span class="font-bold text-lg">NHS CarePoint</span>
-            <div class="space-x-6 text-sm font-medium">
-                <span class="underline cursor-pointer">My Profile</span>
-                <span class="underline cursor-pointer">Log out</span>
+<div class="min-h-screen bg-white p-10 font-mono text-xs border-8 border-gray-200">
+    <div class="max-w-4xl mx-auto border-2 border-black p-8 relative">
+        <div class="absolute -top-4 -right-4 bg-black text-white p-2">WIRE-DASHBOARD</div>
+        <div class="flex justify-between border-b-2 border-black pb-4 mb-8">
+            <div class="font-bold text-xl">[ CarePoint_Global_Nav ]</div>
+            <div class="border-2 border-black px-2 py-1 italic">USER_SESSION: Active</div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-10 mb-10">
+            <div class="border-4 border-black p-10 bg-gray-50 text-center relative">
+                <span class="absolute -top-3 left-4 bg-white border px-2 font-bold uppercase">Route: /booking</span>
+                <h2 class="text-xl font-bold mb-4">ACT_BOOKING_MODULE</h2>
+                <p>Logic: Queries availability_json from DOCTOR entity </p>
+            </div>
+            <div class="border-4 border-black p-10 bg-gray-50 text-center relative">
+                <span class="absolute -top-3 left-4 bg-white border px-2 font-bold uppercase">Route: /portal</span>
+                <h2 class="text-xl font-bold mb-4">ACT_RECORDS_RETRIEVAL</h2>
+                <p>Logic: Joins PATIENT and MEDICAL_RECORD </p>
             </div>
         </div>
-    </nav>
-    <main class="max-w-5xl mx-auto py-12 px-6">
-        <h1 class="text-4xl font-bold mb-10">Welcome, Arthur</h1>
-        <div class="grid md:grid-cols-2 gap-8">
-            <div class="bg-white p-8 border-b-4 border-[#007f3b] shadow-sm hover:shadow-md cursor-pointer transition-shadow">
-                <h2 class="text-2xl font-bold text-[#007f3b] mb-2">Book an appointment</h2>
-                <p class="text-gray-600">See real-time availability and schedule a visit with your GP or specialist.</p>
-            </div>
-            <div class="bg-white p-8 border-b-4 border-[#005eb8] shadow-sm hover:shadow-md cursor-pointer transition-shadow">
-                <h2 class="text-2xl font-bold text-[#005eb8] mb-2">View medical records</h2>
-                <p class="text-gray-600">Access your historical notes, test results, and treatment plans securely.</p>
-            </div>
+
+        <div class="border-2 border-dotted border-black p-6 bg-gray-100">
+            <h3 class="font-bold underline mb-2">ANNOTATION_01: NFR2_AVAILABILITY_TICKER</h3>
+            <p>This component will use SvelteKit 'load' functions to stream real-time updates from the mock EHR database[cite: 287].</p>
         </div>
-        <div class="mt-12 bg-blue-50 border-2 border-blue-200 p-6 rounded">
-            <p class="text-blue-800 font-bold italic">Next: Routine Check-up with Dr. Mehta - Monday 6th April at 09:00</p>
-        </div>
-    </main>
+    </div>
 </div>

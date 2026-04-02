@@ -1,24 +1,30 @@
 <script src="https://cdn.tailwindcss.com"></script>
-<div class="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-white border-t-[12px] border-[#005eb8] shadow-xl p-8">
-        <div class="flex items-center gap-2 mb-10">
-            <div class="bg-[#005eb8] text-white font-bold px-2 py-0.5 text-2xl">NHS</div>
-            <span class="text-xl font-bold tracking-tight text-slate-800">CarePoint HMS</span>
+<div class="min-h-screen bg-white p-10 font-mono text-xs border-8 border-gray-200">
+    <div class="max-w-md mx-auto border-2 border-black p-6 space-y-8 relative">
+        <div class="absolute -top-4 -right-4 bg-black text-white p-2">WIRE-FR1</div>
+        <div class="border-2 border-black p-4 text-center font-bold text-lg">[ SYSTEM_LOGO: NHS CarePoint ]</div>
+        
+        <div class="space-y-4">
+            <div class="relative">
+                <span class="absolute -left-48 top-2 bg-gray-100 border p-1 w-40 text-right">LDM_REF: nhs_number (PK)</span>
+                <div class="border-2 border-black p-2 bg-gray-50 uppercase font-bold">Label: NHS Number</div>
+                <div class="border-2 border-black p-3 bg-white">[ INPUT_FIELD: 10_DIGIT_STRING ]</div>
+            </div>
+            
+            <div class="relative">
+                <span class="absolute -left-48 top-2 bg-gray-100 border p-1 w-40 text-right">LDM_REF: password_hash</span>
+                <div class="border-2 border-black p-2 bg-gray-50 uppercase font-bold">Label: Password</div>
+                <div class="border-2 border-black p-3 bg-white">[ INPUT_FIELD: PROTECTED ]</div>
+            </div>
+            
+            <div class="border-4 border-black p-4 text-center bg-gray-200 font-bold text-base cursor-pointer hover:bg-gray-300">
+                EXECUTE: AUTH_SESSION_VALIDATION
+            </div>
         </div>
-        <h1 class="text-3xl font-extrabold text-slate-900 mb-6">Log in</h1>
-        <div class="space-y-6">
-            <div>
-                <label class="block text-sm font-bold text-slate-700 mb-2">NHS Number (10 digits)</label>
-                <input type="text" placeholder="e.g. 123 456 7890" class="w-full border-2 border-slate-300 p-3 focus:border-[#005eb8] outline-none transition-all">
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-slate-700 mb-2">Password</label>
-                <input type="password" class="w-full border-2 border-slate-300 p-3 focus:border-[#005eb8] outline-none transition-all">
-            </div>
-            <button class="w-full bg-[#007f3b] hover:bg-[#005b2a] text-white font-bold py-4 text-lg shadow-md transition-colors">Continue</button>
-            <div class="text-center pt-2">
-                <a href="#" class="text-[#005eb8] underline text-sm font-medium">I do not have an NHS number</a>
-            </div>
+        
+        <div class="border-t-2 border-dotted border-black pt-4 italic">
+            Logic: If Auth=Success -> Redirect(Dashboard)<br>
+            Logic: If Auth=Fail -> Trigger(Error_Toast)
         </div>
     </div>
 </div>

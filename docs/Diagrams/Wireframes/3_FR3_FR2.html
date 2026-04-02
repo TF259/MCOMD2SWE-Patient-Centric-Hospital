@@ -1,33 +1,29 @@
 <script src="https://cdn.tailwindcss.com"></script>
-<div class="min-h-screen bg-gray-50 p-6">
-    <div class="max-w-3xl mx-auto bg-white shadow-sm border-2 border-gray-200">
-        <div class="p-6 border-b-2 border-gray-100 flex justify-between items-center">
-            <h1 class="text-2xl font-bold">Select a time slot</h1>
-            <span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 uppercase tracking-widest">Live Updates</span>
+<div class="min-h-screen bg-white p-10 font-mono text-xs border-8 border-gray-200">
+    <div class="max-w-4xl mx-auto border-2 border-black p-8 relative">
+        <div class="absolute -top-4 -right-4 bg-black text-white p-2">WIRE-FR2/FR3</div>
+        <h1 class="text-2xl font-bold mb-6 underline">Blueprint: Reactive_Booking_Grid</h1>
+        
+        <div class="flex gap-4 mb-8">
+            <div class="border-2 border-black p-2 bg-gray-50 flex-1">
+                LABEL: SELECT_SPECIALIST<br>
+                [ DROPDOWN: Mapped to DOCTOR.specialty ]
+            </div>
+            <div class="border-2 border-black p-2 bg-gray-50 flex-1">
+                LABEL: DATE_SCOPE<br>
+                [ CONSTRAINT: Future_Dates_Only ]
+            </div>
         </div>
-        <div class="p-8">
-            <div class="mb-8">
-                <label class="block font-bold mb-2">Select Specialist</label>
-                <select class="w-full p-3 border-2 border-gray-300 rounded appearance-none">
-                    <option>Dr. Mehta (Cardiology)</option>
-                    <option>Dr. Smith (General Practice)</option>
-                </select>
-            </div>
-            <div class="grid grid-cols-3 gap-4 mb-8">
-                <button class="border-2 border-[#005eb8] p-4 text-center hover:bg-blue-50">
-                    <span class="block font-bold">09:00</span>
-                    <span class="text-xs text-green-600 font-bold uppercase">Available</span>
-                </button>
-                <button class="border-2 border-gray-200 p-4 text-center bg-gray-100 opacity-50 cursor-not-allowed">
-                    <span class="block font-bold">09:30</span>
-                    <span class="text-xs text-red-600 font-bold uppercase">Booked</span>
-                </button>
-                <button class="border-2 border-[#005eb8] p-4 text-center hover:bg-blue-50">
-                    <span class="block font-bold">10:00</span>
-                    <span class="text-xs text-green-600 font-bold uppercase">Available</span>
-                </button>
-            </div>
-            <button class="w-full bg-[#005eb8] text-white font-bold py-4 hover:bg-blue-800 transition-colors">Confirm Selection</button>
+
+        <div class="grid grid-cols-4 gap-4 border-2 border-black p-4 mb-8">
+            <div class="border-2 border-black p-4 text-center bg-gray-200">[ 09:00 ]<br>STATE: Available</div>
+            <div class="border-2 border-black p-4 text-center bg-white opacity-40">[ 09:30 ]<br>STATE: Booked</div>
+            <div class="border-2 border-black p-4 text-center bg-gray-200">[ 10:00 ]<br>STATE: Available</div>
+            <div class="border-2 border-black p-4 text-center bg-gray-200">[ 10:30 ]<br>STATE: Available</div>
+        </div>
+
+        <div class="bg-black text-white p-4 font-bold text-center">
+            FUNCTION: TRIGGER_APPOINTMENT_ENTRY (Status: Active)
         </div>
     </div>
 </div>
