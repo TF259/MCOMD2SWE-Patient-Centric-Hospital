@@ -1,0 +1,47 @@
+Information Architecture
+Mermaid.js code
+
+graph TD
+    subgraph Screen_1_Login ["NHS CarePoint: Secure Login"]
+        direction TB
+        L1["<b>CarePoint HMS</b>"]
+        L2["NHS Number"]
+        L3[input_field]
+        L4["Password"]
+        L5[password_field]
+        L6{"<b>Login</b>"}
+        L1 --- L2 --- L3 --- L4 --- L5 --- L6
+    end
+
+    subgraph Screen_2_Dashboard ["Patient Dashboard"]
+        direction TB
+        D1["<b>Welcome, Arthur</b>"]
+        D2{"Book New Appointment"}
+        D3{"View My Medical Records"}
+        D4["<b>Real-time Availability</b>"]
+        D5["Dr. Mehta: 09:00 - Available"]
+        D1 --- D2
+        D1 --- D3
+        D1 --- D4 --- D5
+    end
+
+    subgraph Screen_3_Booking ["Booking Interface"]
+        direction TB
+        B1["<b>Confirm Booking</b>"]
+        B2["Select Doctor: Dropdown"]
+        B3["Select Time: 2026-04-06"]
+        B4["Reason for visit"]
+        B5[text_area]
+        B6{"<b>Confirm and Book</b>"}
+        B1 --- B2 --- B3 --- B4 --- B5 --- B6
+    end
+
+    subgraph Screen_4_Portal ["Medical Portal - Read Only"]
+        direction TB
+        P1["<b>My Clinical Records</b>"]
+        P2["Search Records..."]
+        P3["<b>Date | Clinical Notes</b>"]
+        P4["2026-01-15 | Routine check-up. Bloods normal."]
+        P5["2025-11-10 | Clinical Assessment: ADHD/Autism."]
+        P1 --- P2 --- P3 --- P4 --- P5
+    end
