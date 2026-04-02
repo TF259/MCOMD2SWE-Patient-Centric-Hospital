@@ -1,28 +1,42 @@
 <script src="https://cdn.tailwindcss.com"></script>
-<div class="min-h-screen bg-white p-10 font-mono text-xs border-8 border-gray-200">
-    <div class="max-w-4xl mx-auto border-2 border-black p-8 relative">
-        <div class="absolute -top-4 -right-4 bg-black text-white p-2">WIRE-DASHBOARD</div>
-        <div class="flex justify-between border-b-2 border-black pb-4 mb-8">
-            <div class="font-bold text-xl">[ CarePoint_Global_Nav ]</div>
-            <div class="border-2 border-black px-2 py-1 italic">USER_SESSION: Active</div>
+<div class="min-h-screen bg-slate-50 p-12 font-mono text-[10px] border-[16px] border-slate-200">
+    <div class="max-w-5xl mx-auto border-4 border-slate-900 p-10 bg-white relative">
+        <div class="absolute top-4 right-4 text-slate-300 font-bold text-2xl opacity-20 italic">ARCH_TYPE: CENTRAL_CONTROLLER</div>
+        
+        <nav class="border-b-4 border-slate-900 pb-6 mb-12 flex justify-between items-end">
+            <div>
+                <h1 class="text-4xl font-black uppercase tracking-tighter">Patient_Dashboard</h1>
+                <p class="text-slate-400">[ VIEW: /dashboard/user_id ]</p>
+            </div>
+            <div class="border-2 border-slate-900 p-2 font-bold bg-slate-50 underline">FUNC: CLEAR_SESSION</div>
+        </nav>
+
+        <div class="grid grid-cols-2 gap-12 mb-12">
+            <div class="border-4 border-slate-900 p-10 bg-slate-50 hover:bg-white transition-all group relative">
+                <div class="absolute -top-4 left-4 bg-slate-900 text-white px-2 font-bold uppercase">Module: FR2/FR3</div>
+                <h3 class="text-xl font-black mb-4 group-hover:underline">ACT_SCHEDULING_ENGINE</h3>
+                <p class="text-slate-500 leading-relaxed italic">
+                    Logic: Fetch DOCTOR.availability_json.<br>
+                    State: Real-time Slot Ticker[cite: 203].
+                </p>
+            </div>
+
+            <div class="border-4 border-slate-900 p-10 bg-slate-50 hover:bg-white transition-all group relative">
+                <div class="absolute -top-4 left-4 bg-slate-900 text-white px-2 font-bold uppercase">Module: FR4</div>
+                <h3 class="text-xl font-black mb-4 group-hover:underline">ACT_RECORD_FETCHER</h3>
+                <p class="text-slate-500 leading-relaxed italic">
+                    Logic: SQL Join(Patient, Medical_Record).<br>
+                    Constraint: Read-Only Grid[cite: 280].
+                </p>
+            </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-10 mb-10">
-            <div class="border-4 border-black p-10 bg-gray-50 text-center relative">
-                <span class="absolute -top-3 left-4 bg-white border px-2 font-bold uppercase">Route: /booking</span>
-                <h2 class="text-xl font-bold mb-4">ACT_BOOKING_MODULE</h2>
-                <p>Logic: Queries availability_json from DOCTOR entity </p>
-            </div>
-            <div class="border-4 border-black p-10 bg-gray-50 text-center relative">
-                <span class="absolute -top-3 left-4 bg-white border px-2 font-bold uppercase">Route: /portal</span>
-                <h2 class="text-xl font-bold mb-4">ACT_RECORDS_RETRIEVAL</h2>
-                <p>Logic: Joins PATIENT and MEDICAL_RECORD </p>
-            </div>
-        </div>
-
-        <div class="border-2 border-dotted border-black p-6 bg-gray-100">
-            <h3 class="font-bold underline mb-2">ANNOTATION_01: NFR2_AVAILABILITY_TICKER</h3>
-            <p>This component will use SvelteKit 'load' functions to stream real-time updates from the mock EHR database[cite: 287].</p>
+        <div class="border-4 border-dotted border-slate-300 p-6 bg-slate-50">
+            <h4 class="font-black mb-2 uppercase text-slate-400">Backlog_Traceability:</h4>
+            <ul class="space-y-1 text-slate-500 italic">
+                <li>- Story 01: Secure authentication check per session[cite: 193].</li>
+                <li>- Story 02: Reactive load for availability display[cite: 193].</li>
+            </ul>
         </div>
     </div>
 </div>

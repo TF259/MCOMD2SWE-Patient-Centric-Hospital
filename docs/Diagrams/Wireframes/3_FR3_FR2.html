@@ -1,29 +1,37 @@
 <script src="https://cdn.tailwindcss.com"></script>
-<div class="min-h-screen bg-white p-10 font-mono text-xs border-8 border-gray-200">
-    <div class="max-w-4xl mx-auto border-2 border-black p-8 relative">
-        <div class="absolute -top-4 -right-4 bg-black text-white p-2">WIRE-FR2/FR3</div>
-        <h1 class="text-2xl font-bold mb-6 underline">Blueprint: Reactive_Booking_Grid</h1>
-        
-        <div class="flex gap-4 mb-8">
-            <div class="border-2 border-black p-2 bg-gray-50 flex-1">
-                LABEL: SELECT_SPECIALIST<br>
-                [ DROPDOWN: Mapped to DOCTOR.specialty ]
+<div class="min-h-screen bg-slate-50 p-12 font-mono text-[10px] border-[16px] border-slate-200">
+    <div class="max-w-4xl mx-auto border-4 border-slate-900 p-10 bg-white relative">
+        <div class="absolute -top-5 -left-5 bg-slate-900 text-white px-3 py-1 font-bold italic">MODULE: REACTIVE_BOOKING_V2</div>
+
+        <div class="flex gap-6 mb-10">
+            <div class="flex-1 border-2 border-slate-900 p-4 bg-slate-50">
+                <label class="block font-black uppercase text-slate-400 mb-1">Entity_Ref: DOCTOR.specialty</label>
+                <div class="border-2 border-slate-900 p-2 bg-white font-bold">[ SELECT_FILTER: CARDIOLOGY | GP ]</div>
             </div>
-            <div class="border-2 border-black p-2 bg-gray-50 flex-1">
-                LABEL: DATE_SCOPE<br>
-                [ CONSTRAINT: Future_Dates_Only ]
+            <div class="flex-1 border-2 border-slate-900 p-4 bg-slate-50">
+                <label class="block font-black uppercase text-slate-400 mb-1">Constraint: APPOINTMENT.slot_time</label>
+                <div class="border-2 border-slate-900 p-2 bg-white font-bold text-center italic">Value: FUTURE_DATE_ONLY [cite: 273]</div>
             </div>
         </div>
 
-        <div class="grid grid-cols-4 gap-4 border-2 border-black p-4 mb-8">
-            <div class="border-2 border-black p-4 text-center bg-gray-200">[ 09:00 ]<br>STATE: Available</div>
-            <div class="border-2 border-black p-4 text-center bg-white opacity-40">[ 09:30 ]<br>STATE: Booked</div>
-            <div class="border-2 border-black p-4 text-center bg-gray-200">[ 10:00 ]<br>STATE: Available</div>
-            <div class="border-2 border-black p-4 text-center bg-gray-200">[ 10:30 ]<br>STATE: Available</div>
+        <div class="grid grid-cols-4 gap-4 border-4 border-slate-900 p-6 mb-10 bg-slate-50">
+            <div class="border-2 border-slate-900 p-4 text-center bg-slate-900 text-white shadow-[4px_4px_0px_rgba(0,0,0,0.2)]">
+                <span class="font-black text-sm">09:00</span><br>
+                <span class="text-[8px] uppercase">STATE: READY</span>
+            </div>
+            <div class="border-2 border-slate-200 p-4 text-center bg-white opacity-40 italic">
+                <span class="font-black text-sm text-slate-300">09:30</span><br>
+                <span class="text-[8px] uppercase">STATE: BOOKED</span>
+            </div>
+            </div>
+
+        <div class="bg-amber-50 border-2 border-amber-300 p-6 mb-10 relative">
+            <span class="absolute -top-3 left-4 bg-amber-300 text-amber-900 px-2 font-bold uppercase">Acceptance_Criteria_Check [cite: 278]</span>
+            <p class="font-bold text-amber-800">Validation: If (Input_Name && Input_DOB) == NULL -> Disable(Book_Button)</p>
         </div>
 
-        <div class="bg-black text-white p-4 font-bold text-center">
-            FUNCTION: TRIGGER_APPOINTMENT_ENTRY (Status: Active)
+        <div class="bg-slate-900 text-white p-6 text-center font-black text-base uppercase tracking-widest cursor-pointer">
+            Trigger: Create_Appointment_Entry (Status=Active) 
         </div>
     </div>
 </div>
