@@ -1,11 +1,15 @@
 <script lang="ts">
     import type { Doctor, MedicalRecord, Appointment } from '$lib/types';
     import type { PageData } from './$types';
+    import { page } from '$app/stores';
     
     // Svelte 5 Runes for state management
     let { data }: { data: PageData } = $props();
     let isLoading = $state(true);
     let selectedDoctor = $state<Doctor | null>(null);
+    
+    // Check for success message from URL
+    let showSuccess = $derived($page.url.searchParams.get('success') === 'true');
 
     // Simulate loading state for NFR2 (2-second load time)
     $effect(() => {
@@ -68,6 +72,13 @@
                 </div>
             </header>
 
+            <!-- Success Message -->
+            {#if showSuccess}
+                <div class="mb-6 border-l-4 border-green-700 bg-green-50 p-4">
+                    <p class="text-base font-bold text-green-900">✓ Appointment booked successfully!</p>
+                </div>
+            {/if}
+
             <!-- Mobile-first responsive grid layout -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                 
@@ -108,12 +119,13 @@
                                         </div>
                                     </div>
 
-                                    <button 
-                                        class="w-full mt-4 bg-green-700 text-white px-6 py-3 text-lg font-bold rounded-none hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-yellow-400"
+                                    <a 
+                                        href="/booking"
+                                        class="w-full mt-4 bg-green-700 text-white px-6 py-3 text-lg font-bold rounded-none hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-yellow-400 block text-center"
                                         aria-label="Book appointment with {doctor.name}"
                                     >
                                         BOOK WITH {doctor.name.toUpperCase()}
-                                    </button>
+                                    </a>
                                 </div>
                             {/each}
                         </div>
