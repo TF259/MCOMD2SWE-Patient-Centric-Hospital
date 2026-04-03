@@ -7,14 +7,16 @@ export const patients: Patient[] = [
         full_name: "Arthur Retiree",
         dob: "1954-05-12",
         address: "123 Care Lane, Kent",
-        password_hash: "arthur123" 
+        password_hash: "arthur123" ,
+        created_at: "2025-10-01T10:00:00Z"
     },
     {
         nhs_number: "0987654321", // Sarah (P2)
         full_name: "Sarah Professional",
         dob: "1997-08-22",
         address: "45 Business St, London",
-        password_hash: "sarah123"
+        password_hash: "sarah123",
+        created_at: "2025-10-01T10:00:00Z"
     }
 ];
 
