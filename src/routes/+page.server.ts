@@ -1,6 +1,7 @@
+// src/routes/+page.server.ts
 import { fail, redirect } from '@sveltejs/kit';
 import { patients } from '$lib/server/mockData';
-import bcrypt from 'bcryptjs'; // Import bcrypt
+import bcrypt from 'bcryptjs'; // CRITICAL: Required for NFR1
 import type { Actions } from './$types';
 import { createSession } from '../hooks.server';
 
@@ -12,7 +13,7 @@ export const actions = {
 
         const user = patients.find(p => p.nhs_number === nhs_number);
 
-        // Task T11: Secure Hashed Comparison (NFR1)
+        // Technical Logic: Use bcrypt.compare for secure auth (NFR1)
         if (!user || !(await bcrypt.compare(password, user.password_hash))) {
             return fail(400, { 
                 error: 'Invalid NHS Number or Password', 

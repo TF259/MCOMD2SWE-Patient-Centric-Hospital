@@ -192,7 +192,7 @@
             </div>
 
             <!-- Accessibility notice for Arthur -->
-            <aside class="mt-8 bg-blue-50 border-l-4 border-blue-600 p-6" role="complementary">
+            <aside class="mt-8 bg-blue-50 border-l-4 border-blue-600 p-6">
                 <h2 class="text-lg font-bold text-gray-900 mb-2">Accessibility Features (NFR3)</h2>
                 <ul class="space-y-2 text-base text-gray-900">
                     <li>✓ High contrast design with 2px borders</li>
