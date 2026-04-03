@@ -1,0 +1,32 @@
+// src/lib/types.ts
+
+export interface Patient {
+    nhs_number: string; // Primary Key
+    full_name: string;
+    dob: string;
+    address: string;
+    password_hash: string; // Securely hashed [cite: 165]
+}
+
+export interface Doctor {
+    doctor_id: string; // Primary Key
+    name: string;
+    specialty: string;
+    availability_json: string; // Reactive map for real-time scheduling [cite: 160]
+}
+
+export interface Appointment {
+    app_id: number; // Primary Key (Auto-inc)
+    nhs_number: string; // Foreign Key to Patient
+    doctor_id: string; // Foreign Key to Doctor
+    slot_time: string; // Must be FUTURE_DATE_ONLY [cite: 163]
+    status: string; // e.g., 'Active' or 'Cancelled' [cite: 165]
+}
+
+export interface MedicalRecord {
+    record_id: number; // Primary Key
+    nhs_number: string; // Foreign Key
+    doctor_id: string; // Foreign Key
+    notes: string; // Clinical observations [cite: 165]
+    entry_date: string;
+}
