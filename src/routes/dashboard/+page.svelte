@@ -182,7 +182,11 @@
                                                 <button 
                                                     type="submit"
                                                     class="bg-red-600 text-white px-4 py-2 text-sm font-bold rounded-none hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-yellow-400"
-                                                    onclick="return confirm('Are you sure you want to cancel this appointment?')"
+                                                    onclick={(e) => {
+                                                        if (!confirm('Are you sure you want to cancel this appointment?')) {
+                                                            e.preventDefault();
+                                                        }
+                                                    }}
                                                 >
                                                     CANCEL
                                                 </button>
