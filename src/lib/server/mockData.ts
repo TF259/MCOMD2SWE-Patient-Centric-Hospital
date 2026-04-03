@@ -1,5 +1,5 @@
 // src/lib/server/mockData.ts
-import type { Patient, Doctor, Appointment, MedicalRecord } from '$lib/types';
+import type { Patient, Doctor, Appointment, MedicalRecord, AuditLog } from '$lib/types';
 import bcrypt from 'bcryptjs';
 
 // Pre-generated bcrypt hashes (bcrypt.hashSync with salt rounds 10)
@@ -56,5 +56,16 @@ export const medicalRecords: MedicalRecord[] = [
         doctor_id: "DR_MEHTA_005",
         notes: "ADHD/Autism assessment confirmed. Clinical observations align with DSM-5.",
         entry_date: "2025-11-10"
+    }
+];
+
+// T14: Audit Logging for NFR1 (GDPR/Clinical Compliance)
+export const auditLogs: AuditLog[] = [
+    {
+        log_id: 1,
+        nhs_number: "1234567890",
+        action: "VIEW_RECORDS",
+        timestamp: "2025-11-10T14:30:00Z",
+        details: "Initial record access"
     }
 ];

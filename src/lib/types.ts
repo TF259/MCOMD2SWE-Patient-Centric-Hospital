@@ -31,3 +31,11 @@ export interface MedicalRecord {
     notes: string; // Clinical observations
     entry_date: string;
 }
+
+export interface AuditLog {
+    log_id: number; // Primary Key
+    nhs_number: string; // Foreign Key to Patient
+    action: string; // e.g., 'VIEW_RECORDS', 'CREATE_APPOINTMENT', 'LOGIN'
+    timestamp: string; // ISO timestamp
+    details?: string; // Optional additional context
+}

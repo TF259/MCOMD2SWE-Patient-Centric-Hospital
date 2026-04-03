@@ -55,6 +55,22 @@ export const actions = {
             });
         }
 
+        // UT04: Double-booking prevention - Check if slot is already taken
+        const existingAppointment = appointments.find(
+            apt => apt.doctor_id === doctor_id && 
+                   apt.slot_time === slot_time && 
+                   apt.status === 'Active'
+        );
+
+        if (existingAppointment) {
+            return fail(400, { 
+                error: 'This time slot is already booked. Please select a different time.',
+                doctor_id,
+                slot_time,
+                reason
+            });
+        }
+
         // Generate new appointment ID
         const newAppId = appointments.length > 0 
             ? Math.max(...appointments.map(a => a.app_id)) + 1 
