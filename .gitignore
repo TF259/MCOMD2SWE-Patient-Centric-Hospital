@@ -26,3 +26,9 @@ test-results
 
 # Project documentation (keep local)
 project_map.txt
+git_history.txt
+
+# Database files (generated on first run)
+src/lib/server/*.db
+src/lib/server/*.db-shm
+src/lib/server/*.db-wal

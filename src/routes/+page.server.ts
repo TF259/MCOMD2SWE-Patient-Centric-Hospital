@@ -1,9 +1,11 @@
 // src/routes/+page.server.ts
 import { fail, redirect } from '@sveltejs/kit';
-import { patients, auditLogs } from '$lib/server/mockData';
+import { findPatientByNHS, createAuditLog } from '$lib/server/db-helpers';
+import { validateNHSNumber } from '$lib/server/validation';
 import bcrypt from 'bcryptjs'; // CRITICAL: Required for NFR1
 import type { Actions } from './$types';
 import { createSession } from '../hooks.server';
+import '$lib/server/db-seed'; // Ensure database is initialized
 
 export const actions = {
     login: async ({ request, cookies }) => {
@@ -11,18 +13,25 @@ export const actions = {
         const nhs_number = data.get('nhs_number') as string;
         const password = data.get('password') as string;
 
-        const user = patients.find(p => p.nhs_number === nhs_number);
+        // Input validation (NFR1: Security)
+        const nhsValidation = validateNHSNumber(nhs_number);
+        if (!nhsValidation.valid) {
+            return fail(400, { 
+                error: nhsValidation.error, 
+                nhs_number 
+            });
+        }
+
+        const user = findPatientByNHS(nhs_number);
 
         // Technical Logic: Use bcrypt.compare for secure auth (NFR1)
         if (!user || !(await bcrypt.compare(password, user.password_hash))) {
             // T14: Log the security event (Failed Login) for clinical audit trail (NFR1)
-            auditLogs.push({
-                log_id: auditLogs.length + 1,
-                nhs_number: nhs_number || 'UNKNOWN',
-                action: 'FAILED_LOGIN_ATTEMPT',
-                timestamp: new Date().toISOString(),
-                details: `Failed login attempt for NHS Number: ${nhs_number}`
-            });
+            createAuditLog(
+                nhs_number || 'UNKNOWN',
+                'FAILED_LOGIN_ATTEMPT',
+                `Failed login attempt for NHS Number: ${nhs_number}`
+            );
 
             return fail(400, { 
                 error: 'Invalid NHS Number or Password', 
@@ -31,13 +40,11 @@ export const actions = {
         }
 
         // T14: Log successful login for GDPR compliance (NFR1)
-        auditLogs.push({
-            log_id: auditLogs.length + 1,
-            nhs_number: user.nhs_number,
-            action: 'SUCCESSFUL_LOGIN',
-            timestamp: new Date().toISOString(),
-            details: `Patient ${user.full_name} logged in successfully`
-        });
+        createAuditLog(
+            user.nhs_number,
+            'SUCCESSFUL_LOGIN',
+            `Patient ${user.full_name} logged in successfully`
+        );
 
         const sessionId = createSession(user.nhs_number, user.full_name);
         cookies.set('session_id', sessionId, {

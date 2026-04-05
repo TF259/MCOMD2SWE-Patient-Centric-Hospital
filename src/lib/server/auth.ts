@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs';
-import { patients } from './mockData';
+import { findPatientByNHS } from './db-helpers';
+import './db-seed'; // Ensure database is seeded
 
 export async function validatePatient(nhsNumber: string, passwordAttempt: string) {
-    const patient = patients.find(p => p.nhs_number === nhsNumber);
+    const patient = findPatientByNHS(nhsNumber);
     if (!patient) return null;
     const isValid = await bcrypt.compare(passwordAttempt, patient.password_hash);
     return isValid ? patient : null;

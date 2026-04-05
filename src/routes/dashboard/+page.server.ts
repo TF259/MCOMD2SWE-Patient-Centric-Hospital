@@ -1,8 +1,15 @@
 // src/routes/dashboard/+page.server.ts
 import type { PageServerLoad, Actions } from './$types';
-import { doctors, medicalRecords, appointments, auditLogs } from '$lib/server/mockData';
+import { 
+    getAllDoctors, 
+    getMedicalRecordsByNHS, 
+    getAppointmentsByNHS,
+    cancelAppointment as dbCancelAppointment,
+    createAuditLog
+} from '$lib/server/db-helpers';
 import { destroySession } from '../../hooks.server';
 import { redirect } from '@sveltejs/kit';
+import '$lib/server/db-seed'; // Ensure database is initialized
 
 export const load: PageServerLoad = async ({ locals }) => {
     // Simulate load time for NFR2 demonstration (500ms for better UX during development)
@@ -23,32 +30,21 @@ export const load: PageServerLoad = async ({ locals }) => {
 
     // T14: Audit logging for GDPR/NFR1 compliance
     // Log every access to medical records
-    const newLogId = auditLogs.length > 0 
-        ? Math.max(...auditLogs.map(l => l.log_id)) + 1 
-        : 1;
+    const patientRecords = getMedicalRecordsByNHS(session.nhs_number);
     
-    auditLogs.push({
-        log_id: newLogId,
-        nhs_number: session.nhs_number,
-        action: 'VIEW_RECORDS',
-        timestamp: new Date().toISOString(),
-        details: `Dashboard accessed - ${medicalRecords.filter(r => r.nhs_number === session.nhs_number).length} records viewed`
-    });
-
-    // Get patient's medical records
-    const patientRecords = medicalRecords.filter(
-        record => record.nhs_number === session.nhs_number
+    createAuditLog(
+        session.nhs_number,
+        'VIEW_RECORDS',
+        `Dashboard accessed - ${patientRecords.length} records viewed`
     );
 
     // Get patient's appointments
-    const patientAppointments = appointments.filter(
-        apt => apt.nhs_number === session.nhs_number
-    );
+    const patientAppointments = getAppointmentsByNHS(session.nhs_number);
 
     return {
         patient_name: session.full_name,
         nhs_number: session.nhs_number,
-        doctors,
+        doctors: getAllDoctors(),
         medicalRecords: patientRecords,
         appointments: patientAppointments
     };
@@ -77,33 +73,19 @@ export const actions = {
         const data = await request.formData();
         const app_id = parseInt(data.get('app_id') as string);
 
-        // Find appointment
-        const appointment = appointments.find(apt => apt.app_id === app_id);
+        // Cancel appointment using database helper
+        const result = dbCancelAppointment(app_id);
         
-        if (!appointment) {
-            return { error: 'Appointment not found' };
+        if (!result.success) {
+            return { error: result.error };
         }
-
-        // Security: Verify patient owns this appointment
-        if (appointment.nhs_number !== session.nhs_number) {
-            return { error: 'Unauthorized to cancel this appointment' };
-        }
-
-        // Update status to Cancelled
-        appointment.status = 'Cancelled';
 
         // T14: Audit log for cancellation
-        const newLogId = auditLogs.length > 0 
-            ? Math.max(...auditLogs.map(l => l.log_id)) + 1 
-            : 1;
-        
-        auditLogs.push({
-            log_id: newLogId,
-            nhs_number: session.nhs_number,
-            action: 'CANCEL_APPOINTMENT',
-            timestamp: new Date().toISOString(),
-            details: `Patient cancelled appointment #${app_id}`
-        });
+        createAuditLog(
+            session.nhs_number,
+            'CANCEL_APPOINTMENT',
+            `Patient cancelled appointment #${app_id}`
+        );
 
         throw redirect(303, '/dashboard?cancelled=true');
     }
