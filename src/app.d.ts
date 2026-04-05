@@ -2,19 +2,16 @@
 // for information about these interfaces
 declare global {
 	namespace App {
-		interface Patient {
-			id: number;
-			name: string;
-			email: string;
-			dob: string | null;
-			phone: string | null;
-			address: string | null;
-			created_at: string;
-		}
+		// interface Error {}
 		interface Locals {
-			patient: Patient | null;
-			sessionToken: string | null;
+			session?: {
+				nhs_number: string;
+				full_name: string;
+			};
 		}
+		// interface PageData {}
+		// interface PageState {}
+		// interface Platform {}
 	}
 }
 

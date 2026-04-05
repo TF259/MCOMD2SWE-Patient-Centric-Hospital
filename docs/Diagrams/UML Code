@@ -1,0 +1,45 @@
+Mermaid.js code
+
+flowchart LR
+    subgraph CarePoint_HMS [CarePoint Hospital System]
+        direction TB
+        %% Core Functionality
+        UC1((Secure Login))
+        UC2((Book Appointment))
+        UC3((View Medical Records))
+        UC4((Sync Doctor Availability))
+        UC5((Update Clinical Notes))
+        UC6((Generate Schedule))
+        UC7((Validate New Patient))
+        UC8((Manage Resource Slots))
+        
+        %% Automated / Internal Use Cases
+        UC10((Audit Access Log))
+        UC11((Trigger Notification))
+
+        %% Logic Relationships
+        UC2 -.-> |include| UC1
+        UC3 -.-> |include| UC1
+        UC5 -.-> |include| UC1
+        UC11 -.-> |extend| UC2
+        UC3 -.-> |include| UC10
+    end
+
+    %% Human Actors
+    User((System User)) --- UC1
+    Patient((Patient)) -- inherits --- User
+    Doctor((Doctor)) -- inherits --- User
+    Admin((Admin)) -- inherits --- User
+
+    %% Associations
+    Patient --- UC2
+    Patient --- UC3
+    Doctor --- UC5
+    Admin --- UC7
+    Admin --- UC8
+
+    %% External System Actors (The "Outside the Box" part)
+    EHR_DB[(Central EHR Database)] --- UC3
+    EHR_DB --- UC4
+    SMS_Gateway[[External SMS/Email API]] --- UC11
+    NHS_Identity{NHS Identity Provider} --- UC1

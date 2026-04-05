@@ -1,0 +1,39 @@
+<script src="https://cdn.tailwindcss.com"></script>
+<div class="min-h-screen bg-slate-50 p-8 font-mono text-[10px] border-[16px] border-slate-200">
+    <div class="max-w-md mx-auto border-4 border-slate-900 p-8 bg-white shadow-[10px_10px_0px_rgba(0,0,0,0.1)] relative">
+        <div class="absolute -top-5 -left-5 bg-slate-900 text-white px-3 py-1 font-bold italic">OBJECT: AUTH_GATEWAY_V1</div>
+        
+        <div class="border-2 border-slate-900 p-6 mb-8 text-center bg-slate-50">
+            <h2 class="text-xl font-black uppercase tracking-tighter">CarePoint HMS</h2>
+            <p class="text-slate-400 mt-2">[ ASSET: NHS_BRAND_IDENTITY_PROVIDER ]</p>
+        </div>
+
+        <div class="space-y-8">
+            <div class="relative group">
+                <div class="absolute -right-48 top-0 w-40 p-2 bg-amber-50 border-l-4 border-amber-400 text-amber-800">
+                    <b>DATA_BIND:</b><br>PATIENT.nhs_number (PK)<br>Constraint: Unique(10)
+                </div>
+                <label class="block font-black mb-2 uppercase">Input: NHS_IDENTIFIER</label>
+                <div class="border-2 border-slate-900 p-4 bg-slate-50 font-bold text-slate-400">[ STRING_INPUT_MASK: 000-000-0000 ]</div>
+            </div>
+
+            <div class="relative">
+                <div class="absolute -right-48 top-0 w-40 p-2 bg-amber-50 border-l-4 border-amber-400 text-amber-800">
+                    <b>DATA_BIND:</b><br>PATIENT.password_hash<br>Logic: Argon2/Bcrypt
+                </div>
+                <label class="block font-black mb-2 uppercase">Input: ACCESS_CREDENTIAL</label>
+                <div class="border-2 border-slate-900 p-4 bg-slate-50 font-bold text-slate-400">[ SECURE_MASK: ******** ]</div>
+            </div>
+
+            <div class="bg-slate-900 text-white p-5 text-center font-black text-sm cursor-pointer hover:bg-slate-700 transition-all">
+                ACTION: EXECUTE_SESSION_INIT
+            </div>
+        </div>
+
+        <div class="mt-10 border-t-2 border-slate-900 pt-4 text-slate-500 italic leading-relaxed">
+            <b>ENGINEERING_LOGIC:</b><br>
+            - Middleware: Check session_token on every route.<br>
+            - Audit: Log login_attempt to 'AUDIT_ACCESS_LOG'.
+        </div>
+    </div>
+</div>
