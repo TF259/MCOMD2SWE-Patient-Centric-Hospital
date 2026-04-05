@@ -21,6 +21,19 @@
         const date = new Date(slotTime.replace(' ', 'T'));
         return date.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
+
+    // Open record and log view (T14 GDPR compliance)
+    function viewRecordDetail(record: any) {
+        selectedRecord = record;
+        
+        // Log the record view via form action
+        const formData = new FormData();
+        formData.append('record_id', record.record_id.toString());
+        fetch('?/viewRecord', {
+            method: 'POST',
+            body: formData
+        });
+    }
 </script>
 
 <div class="min-h-screen bg-gray-50">
@@ -152,7 +165,7 @@
                                     <p class="text-sm text-gray-600 mb-2">Doctor: {record.doctor_id}</p>
                                     <p class="text-sm text-gray-800 line-clamp-2">{record.notes}</p>
                                     <button 
-                                        onclick={() => selectedRecord = record}
+                                        onclick={() => viewRecordDetail(record)}
                                         class="mt-3 text-sm font-bold text-gray-900 underline hover:no-underline"
                                     >
                                         VIEW DETAILS →
@@ -194,6 +207,7 @@
             <div class="bg-gray-50 border-l-4 border-blue-600 p-4 mb-4">
                 <p class="text-gray-900">{selectedRecord.notes}</p>
             </div>
+            <p class="text-xs text-gray-400 mb-4">T14: This view has been logged for GDPR compliance</p>
             <button 
                 onclick={() => selectedRecord = null} 
                 class="w-full bg-gray-900 text-white py-3 font-bold hover:bg-gray-800"
