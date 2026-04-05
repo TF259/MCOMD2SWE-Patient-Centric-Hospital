@@ -148,3 +148,103 @@ export function getAuditLogsByNHS(nhsNumber: string): AuditLog[] {
         return [];
     }
 }
+
+// ============= DOCTOR DASHBOARD OPERATIONS =============
+
+// Get today's appointments for a doctor
+export function getDoctorTodayAppointments(doctorId: string): (Appointment & { patient_name?: string })[] {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const stmt = db.prepare(`
+            SELECT a.*, p.full_name as patient_name
+            FROM appointments a
+            LEFT JOIN patients p ON a.nhs_number = p.nhs_number
+            WHERE a.doctor_id = ? 
+            AND date(a.slot_time) = date(?)
+            AND a.status = 'Active'
+            ORDER BY a.slot_time ASC
+        `);
+        return stmt.all(doctorId, today) as (Appointment & { patient_name?: string })[];
+    } catch (error) {
+        console.error('Error fetching today appointments:', error);
+        return [];
+    }
+}
+
+// Get upcoming appointments for a doctor (next 7 days, excluding today)
+export function getDoctorUpcomingAppointments(doctorId: string): (Appointment & { patient_name?: string })[] {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const stmt = db.prepare(`
+            SELECT a.*, p.full_name as patient_name
+            FROM appointments a
+            LEFT JOIN patients p ON a.nhs_number = p.nhs_number
+            WHERE a.doctor_id = ? 
+            AND date(a.slot_time) > date(?)
+            AND date(a.slot_time) <= date(?)
+            AND a.status = 'Active'
+            ORDER BY a.slot_time ASC
+        `);
+        return stmt.all(doctorId, today, nextWeek) as (Appointment & { patient_name?: string })[];
+    } catch (error) {
+        console.error('Error fetching upcoming appointments:', error);
+        return [];
+    }
+}
+
+// Get appointment history for a doctor (past appointments)
+export function getDoctorAppointmentHistory(doctorId: string, limit: number = 20): (Appointment & { patient_name?: string })[] {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const stmt = db.prepare(`
+            SELECT a.*, p.full_name as patient_name
+            FROM appointments a
+            LEFT JOIN patients p ON a.nhs_number = p.nhs_number
+            WHERE a.doctor_id = ? 
+            AND (date(a.slot_time) < date(?) OR a.status IN ('Completed', 'Cancelled'))
+            ORDER BY a.slot_time DESC
+            LIMIT ?
+        `);
+        return stmt.all(doctorId, today, limit) as (Appointment & { patient_name?: string })[];
+    } catch (error) {
+        console.error('Error fetching appointment history:', error);
+        return [];
+    }
+}
+
+// Mark an appointment as completed
+export function completeAppointment(appId: number): { success: boolean; error?: string } {
+    try {
+        const stmt = db.prepare(`
+            UPDATE appointments 
+            SET status = 'Completed' 
+            WHERE app_id = ? AND status = 'Active'
+        `);
+        const result = stmt.run(appId);
+        
+        if (result.changes === 0) {
+            return { success: false, error: 'Appointment not found or already completed' };
+        }
+        
+        return { success: true };
+    } catch (error) {
+        console.error('Error completing appointment:', error);
+        return { success: false, error: 'Failed to complete appointment' };
+    }
+}
+
+// Get patient details by NHS number (for doctor view)
+export function getPatientDetails(nhsNumber: string): { nhs_number: string; full_name: string; dob: string } | null {
+    try {
+        const stmt = db.prepare(`
+            SELECT nhs_number, full_name, dob
+            FROM patients
+            WHERE nhs_number = ?
+        `);
+        return stmt.get(nhsNumber) as { nhs_number: string; full_name: string; dob: string } | null;
+    } catch (error) {
+        console.error('Error fetching patient details:', error);
+        return null;
+    }
+}

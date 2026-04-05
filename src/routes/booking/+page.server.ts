@@ -12,8 +12,8 @@ import '$lib/server/db-seed'; // Ensure database is initialized
 export const load: PageServerLoad = async ({ locals }) => {
     const session = locals.session;
     
-    // Redirect to login if no session (same pattern as dashboard)
-    if (!session?.nhs_number) {
+    // Redirect to login if no session or not a patient
+    if (!session || session.type !== 'patient' || !session.nhs_number) {
         throw redirect(303, '/');
     }
 
@@ -29,7 +29,7 @@ export const actions = {
     default: async ({ request, locals }) => {
         const session = locals.session;
         
-        if (!session?.nhs_number) {
+        if (!session || session.type !== 'patient' || !session.nhs_number) {
             throw redirect(303, '/');
         }
 

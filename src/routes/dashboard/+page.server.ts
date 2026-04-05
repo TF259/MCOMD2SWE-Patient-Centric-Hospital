@@ -18,7 +18,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
     const session = locals.session;
     
-    if (!session?.nhs_number) {
+    // Check if user is a patient (not a doctor)
+    if (!session || session.type !== 'patient' || !session.nhs_number) {
         return {
             patient_name: 'Guest',
             nhs_number: null,
@@ -66,7 +67,7 @@ export const actions = {
     cancelAppointment: async ({ request, locals }) => {
         const session = locals.session;
         
-        if (!session?.nhs_number) {
+        if (!session || session.type !== 'patient' || !session.nhs_number) {
             throw redirect(303, '/');
         }
 

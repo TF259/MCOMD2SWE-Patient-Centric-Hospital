@@ -2,8 +2,24 @@
 import type { Handle } from '@sveltejs/kit';
 import { patients } from '$lib/server/mockData';
 
+// Session types for different user roles
+interface PatientSession {
+    type: 'patient';
+    nhs_number: string;
+    full_name: string;
+}
+
+interface DoctorSession {
+    type: 'doctor';
+    doctor_id: string;
+    name: string;
+    specialty: string;
+}
+
+type Session = PatientSession | DoctorSession;
+
 // Simple in-memory session store (in production, use a database or Redis)
-const sessions = new Map<string, { nhs_number: string; full_name: string }>();
+const sessions = new Map<string, Session>();
 
 export const handle: Handle = async ({ event, resolve }) => {
     // Get session ID from cookie
@@ -20,10 +36,17 @@ export const handle: Handle = async ({ event, resolve }) => {
     return await resolve(event);
 };
 
-// Helper function to create a session (called from login action)
+// Helper function to create a patient session (called from login action)
 export function createSession(nhs_number: string, full_name: string): string {
     const sessionId = crypto.randomUUID();
-    sessions.set(sessionId, { nhs_number, full_name });
+    sessions.set(sessionId, { type: 'patient', nhs_number, full_name });
+    return sessionId;
+}
+
+// Helper function to create a doctor session
+export function createDoctorSession(doctor_id: string, name: string, specialty: string): string {
+    const sessionId = crypto.randomUUID();
+    sessions.set(sessionId, { type: 'doctor', doctor_id, name, specialty });
     return sessionId;
 }
 
