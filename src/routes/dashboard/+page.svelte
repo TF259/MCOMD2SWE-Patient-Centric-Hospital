@@ -7,7 +7,8 @@
     let { data }: { data: PageData } = $props();
     let isLoading = $state(true);
     let selectedDoctor = $state<Doctor | null>(null);
-    
+    let selectedRecord = $state(null); // Svelte 5 Rune for modal state
+
     // Check for success message from URL
     let showSuccess = $derived($page.url.searchParams.get('success') === 'true');
     let showCancelled = $derived($page.url.searchParams.get('cancelled') === 'true');
@@ -237,11 +238,20 @@
                                     </div>
 
                                     <button 
-                                        class="mt-4 w-full sm:w-auto bg-gray-900 text-white px-6 py-2 text-base font-bold rounded-none hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-yellow-400"
-                                        aria-label="View full details for record {record.record_id}"
+                                        onclick={() => selectedRecord = record}
+                                        class="bg-gray-900 text-white px-4 py-2 font-bold hover:bg-gray-800 focus:ring-4 focus:ring-yellow-400"
                                     >
                                         VIEW FULL DETAILS
                                     </button>
+                                    {#if selectedRecord}
+                                        <div class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+                                            <div class="bg-white border-4 border-gray-900 p-8 max-w-lg w-full shadow-[12px_12px_0px_rgba(0,0,0,1)]">
+                                                <h2 class="text-2xl font-bold mb-4 uppercase border-b-4 border-gray-900 pb-2">Record #{selectedRecord.record_id}</h2>
+                                                <p class="text-lg leading-relaxed italic mb-6">"{selectedRecord.notes}"</p>
+                                                <button onclick={() => selectedRecord = null} class="w-full bg-red-700 text-white py-3 font-bold">CLOSE</button>
+                                            </div>
+                                        </div>
+                                    {/if}
                                 </article>
                             {/each}
                         </div>
