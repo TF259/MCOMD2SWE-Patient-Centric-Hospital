@@ -14,9 +14,10 @@ export function seedDatabase() {
 
     console.log('🌱 Seeding database with initial data...');
 
-    // Generate password hashes
-    const ARTHUR_HASH = bcrypt.hashSync('arthur123', 10);
-    const SARAH_HASH = bcrypt.hashSync('sarah123', 10);
+    // Generate password hashes (NFR1: Secure auth with bcrypt)
+    const ARTHUR_HASH = bcrypt.hashSync('SecurePass123!', 10);
+    const SARAH_HASH = bcrypt.hashSync('SarahSecure456!', 10);
+    const DOCTOR_HASH = bcrypt.hashSync('DoctorPass123!', 10);
 
     // Seed patients
     const insertPatient = db.prepare(`
@@ -27,31 +28,52 @@ export function seedDatabase() {
     insertPatient.run('1234567890', 'Arthur Retiree', '1954-05-12', '123 Care Lane, Kent', ARTHUR_HASH, '2025-10-01T10:00:00Z');
     insertPatient.run('0987654321', 'Sarah Professional', '1997-08-22', '45 Business St, London', SARAH_HASH, '2025-10-01T10:00:00Z');
 
-    // Seed doctors
+    // Seed doctors - Multiple per specialty for filtering demonstration
     const insertDoctor = db.prepare(`
-        INSERT INTO doctors (doctor_id, name, specialty, availability_json)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO doctors (doctor_id, name, specialty, availability_json, password_hash)
+        VALUES (?, ?, ?, ?, ?)
     `);
 
-    const availability = JSON.stringify([
-        { time: "09:00", status: "READY" },
-        { time: "09:30", status: "READY" },
-        { time: "10:00", status: "READY" },
-        { time: "10:30", status: "READY" },
-        { time: "14:00", status: "READY" },
-        { time: "14:30", status: "READY" }
-    ]);
+    // Standard time slots for most doctors
+    const standardSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "14:00", "14:30", "15:00", "15:30", "16:00"];
+    
+    // CARDIOLOGY (2 doctors)
+    insertDoctor.run('DR_SMITH_001', 'Dr. Emily Smith', 'Cardiology', JSON.stringify(standardSlots), DOCTOR_HASH);
+    insertDoctor.run('DR_CHEN_002', 'Dr. Michael Chen', 'Cardiology', JSON.stringify(standardSlots), DOCTOR_HASH);
+    
+    // GENERAL PRACTICE (2 doctors)
+    insertDoctor.run('DR_MEHTA_003', 'Dr. Priya Mehta', 'General Practice', JSON.stringify(standardSlots), DOCTOR_HASH);
+    insertDoctor.run('DR_WILSON_004', 'Dr. James Wilson', 'General Practice', JSON.stringify(standardSlots), DOCTOR_HASH);
+    
+    // NEUROLOGY (2 doctors)
+    insertDoctor.run('DR_PATEL_005', 'Dr. Arun Patel', 'Neurology', JSON.stringify(standardSlots), DOCTOR_HASH);
+    insertDoctor.run('DR_JONES_006', 'Dr. Sarah Jones', 'Neurology', JSON.stringify(standardSlots), DOCTOR_HASH);
+    
+    // DERMATOLOGY (1 doctor)
+    insertDoctor.run('DR_KUMAR_007', 'Dr. Raj Kumar', 'Dermatology', JSON.stringify(standardSlots), DOCTOR_HASH);
+    
+    // PAEDIATRICS (1 doctor)
+    insertDoctor.run('DR_TAYLOR_008', 'Dr. Lisa Taylor', 'Paediatrics', JSON.stringify(standardSlots), DOCTOR_HASH);
 
-    insertDoctor.run('DR_MEHTA_005', 'Dr. Mehta', 'Cardiology', availability);
-    insertDoctor.run('DR_SMITH_010', 'Dr. Smith', 'General Practice', availability);
-
-    // Seed appointments
+    // Seed existing appointments (for double-booking prevention demo)
     const insertAppointment = db.prepare(`
         INSERT INTO appointments (nhs_number, doctor_id, slot_time, status, created_at)
         VALUES (?, ?, ?, ?, ?)
     `);
 
-    insertAppointment.run('1234567890', 'DR_MEHTA_005', '2026-04-10 09:30', 'Active', new Date().toISOString());
+    // Get tomorrow and next few days for realistic appointments
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dayAfter = new Date();
+    dayAfter.setDate(dayAfter.getDate() + 2);
+    
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    // Existing booked appointments
+    insertAppointment.run('0987654321', 'DR_SMITH_001', `${formatDate(tomorrow)} 09:00`, 'Active', new Date().toISOString());
+    insertAppointment.run('0987654321', 'DR_SMITH_001', `${formatDate(tomorrow)} 10:00`, 'Active', new Date().toISOString());
+    insertAppointment.run('1234567890', 'DR_MEHTA_003', `${formatDate(dayAfter)} 09:30`, 'Active', new Date().toISOString());
+    insertAppointment.run('0987654321', 'DR_PATEL_005', `${formatDate(tomorrow)} 14:00`, 'Active', new Date().toISOString());
 
     // Seed medical records
     const insertRecord = db.prepare(`
@@ -61,15 +83,22 @@ export function seedDatabase() {
 
     insertRecord.run(
         '1234567890',
-        'DR_MEHTA_005',
-        'ADHD/Autism assessment confirmed. Clinical observations align with DSM-5.',
+        'DR_SMITH_001',
+        'Routine cardiovascular check-up. Blood pressure normal at 120/80. Heart rhythm regular. ECG shows normal sinus rhythm.',
+        '2026-01-15'
+    );
+
+    insertRecord.run(
+        '1234567890',
+        'DR_MEHTA_003',
+        'Annual health assessment. All vitals within normal range. Recommended continued exercise routine.',
         '2025-11-10'
     );
 
     insertRecord.run(
         '1234567890',
-        'DR_MEHTA_005',
-        'Follow-up consultation. Patient reports improved quality of life with current treatment plan.',
+        'DR_PATEL_005',
+        'Neurological consultation. No concerns identified. Patient reports no headaches or dizziness.',
         '2025-12-01'
     );
 
@@ -81,7 +110,7 @@ export function seedDatabase() {
 
     insertAudit.run('1234567890', 'VIEW_RECORDS', '2025-11-10T14:30:00Z', 'Initial record access');
 
-    console.log('✅ Database seeded successfully');
+    console.log('✅ Database seeded with 8 doctors across 5 specialties');
 }
 
 // Auto-seed on import (run once)

@@ -1,280 +1,205 @@
 <script lang="ts">
-    import type { Doctor, MedicalRecord, Appointment } from '$lib/types';
     import type { PageData } from './$types';
     import { page } from '$app/stores';
+    import { enhance } from '$app/forms';
     
-    // Svelte 5 Runes for state management
     let { data }: { data: PageData } = $props();
-    let isLoading = $state(true);
-    let selectedDoctor = $state<Doctor | null>(null);
-    let selectedRecord = $state(null); // Svelte 5 Rune for modal state
+    let selectedRecord = $state<any>(null);
 
-    // Check for success message from URL
+    // Check for success/cancelled message from URL
     let showSuccess = $derived($page.url.searchParams.get('success') === 'true');
     let showCancelled = $derived($page.url.searchParams.get('cancelled') === 'true');
-
-    // Simulate loading state for NFR2 (2-second load time)
-    $effect(() => {
-        const timer = setTimeout(() => {
-            isLoading = false;
-        }, 100);
-        return () => clearTimeout(timer);
-    });
-
-    // Parse doctor availability
-    function parseAvailability(doctor: Doctor) {
-        try {
-            return JSON.parse(doctor.availability_json);
-        } catch {
-            return [];
-        }
-    }
 
     // Format date for display
     function formatDate(dateStr: string) {
         const date = new Date(dateStr);
-        return date.toLocaleDateString('en-GB', { 
-            day: 'numeric', 
-            month: 'short', 
-            year: 'numeric' 
-        });
+        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    // Format slot time
+    function formatSlotTime(slotTime: string) {
+        const date = new Date(slotTime.replace(' ', 'T'));
+        return date.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 </script>
 
-{#if isLoading}
-    <!-- NFR2: Loading state demonstration -->
-    <div class="min-h-screen bg-white flex items-center justify-center">
-        <div class="text-center space-y-4">
-            <div class="inline-block w-16 h-16 border-4 border-green-700 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-xl font-bold text-gray-900">Loading Dashboard...</p>
-            <p class="text-base text-gray-600">Meeting 2-second load time goal (NFR2)</p>
+<div class="min-h-screen bg-gray-50">
+    <!-- Header matching wireframe exactly -->
+    <header class="bg-white border-b-4 border-gray-900 px-6 py-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm text-gray-400 mb-1">ARCH_TYPE: CENTRAL_CONTROLLER</p>
+                    <h1 class="text-3xl font-bold text-gray-900">PATIENT_DASHBOARD</h1>
+                    <p class="text-sm text-gray-500 mt-1">[ VIEW: /dashboard/{data.nhs_number} ]</p>
+                </div>
+                <form method="POST" action="?/logout" use:enhance>
+                    <button 
+                        type="submit"
+                        class="border-2 border-gray-900 px-4 py-2 text-sm font-bold hover:bg-gray-900 hover:text-white transition-colors"
+                    >
+                        FUNC: CLEAR_SESSION
+                    </button>
+                </form>
+            </div>
         </div>
-    </div>
-{:else}
-    <!-- Main Dashboard -->
-    <div class="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
-        <div class="max-w-7xl mx-auto">
-            <!-- Header - Responsive for mobile-first (Sarah) -->
-            <header class="mb-8 pb-6 border-b-4 border-gray-900">
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                    <div>
-                        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-                            Welcome, {data.patient_name}
-                        </h1>
-                        <p class="text-base text-gray-600">NHS Number: {data.nhs_number || 'N/A'}</p>
-                    </div>
-                    <form method="POST" action="?/logout">
-                        <button 
-                            type="submit"
-                            class="bg-gray-900 text-white px-6 py-3 text-lg font-bold rounded-none hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-yellow-400 text-center"
-                        >
-                            LOGOUT
-                        </button>
-                    </form>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6">
+        <!-- Success/Cancelled Banners -->
+        {#if showSuccess}
+            <div class="mb-6 bg-green-700 text-white p-4 flex items-center gap-3">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <span class="font-bold">Appointment confirmed successfully</span>
+            </div>
+        {/if}
+
+        {#if showCancelled}
+            <div class="mb-6 bg-blue-700 text-white p-4">
+                <span class="font-bold">Appointment cancelled</span>
+            </div>
+        {/if}
+
+        <!-- Two-column module layout matching wireframe -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- ACT_SCHEDULING_ENGINE Module -->
+            <section class="border-2 border-gray-900 bg-white">
+                <div class="bg-gray-900 text-white px-4 py-2 text-sm font-bold">
+                    MODULE: FR2/FR3
                 </div>
-            </header>
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">ACT_SCHEDULING_ENGINE</h2>
+                    <p class="text-sm text-gray-600 mb-1">Logic: Fetch DOCTOR.availability_json.</p>
+                    <p class="text-sm text-gray-600 mb-6">State: Real-time Slot Ticker.</p>
 
-            <!-- T15: Story 06 Confirmation Banner (Enhanced for Elite-level trust) -->
-            {#if showSuccess}
-                <div class="mb-6 bg-green-700 text-white p-6 shadow-lg border-4 border-green-900">
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0">
-                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="text-xl font-bold mb-2">✓ Appointment Confirmed</h3>
-                            <p class="text-base">Your booking has been successfully confirmed. You will receive further details closer to your appointment date.</p>
-                            <p class="text-sm mt-2 opacity-90">Please arrive 10 minutes early with your NHS card.</p>
-                        </div>
-                    </div>
-                </div>
-            {/if}
-
-            <!-- T16: Cancellation Confirmation Banner -->
-            {#if showCancelled}
-                <div class="mb-6 bg-blue-700 text-white p-6 shadow-lg border-4 border-blue-900">
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0">
-                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="text-xl font-bold mb-2">Appointment Cancelled</h3>
-                            <p class="text-base">Your appointment has been successfully cancelled. You can book a new appointment anytime.</p>
-                        </div>
-                    </div>
-                </div>
-            {/if}
-
-            <!-- Mobile-first responsive grid layout -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-                
-                <!-- ACT_SCHEDULING_ENGINE: Real-time Availability Ticker -->
-                <section class="bg-white border-4 border-gray-900 p-6" aria-label="Doctor Availability">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-2 uppercase">
-                        Book Appointment
-                    </h2>
-                    <p class="text-base text-gray-600 mb-6">[ ACT_SCHEDULING_ENGINE ]</p>
-
-                    {#if data.doctors.length > 0}
-                        <div class="space-y-4">
-                            {#each data.doctors as doctor}
-                                <div class="border-2 border-gray-900 p-4">
-                                    <h3 class="text-xl font-bold text-gray-900 mb-2">{doctor.name}</h3>
-                                    <p class="text-base text-gray-700 mb-4">{doctor.specialty}</p>
-                                    
-                                    <!-- Real-time Availability Ticker -->
-                                    <div class="bg-gray-50 border-l-4 border-green-700 p-4">
-                                        <h4 class="text-sm font-bold text-gray-900 mb-3 uppercase">
-                                            Real-time Availability
-                                        </h4>
-                                        <div class="space-y-2">
-                                            {#each parseAvailability(doctor) as slot}
-                                                <div class="flex items-center justify-between">
-                                                    <span class="text-base font-bold text-gray-900">{slot.time}</span>
-                                                    <span 
-                                                        class="px-3 py-1 text-sm font-bold rounded-none {
-                                                            slot.status === 'READY' 
-                                                                ? 'bg-green-700 text-white' 
-                                                                : 'bg-gray-300 text-gray-700'
-                                                        }"
-                                                    >
-                                                        {slot.status}
-                                                    </span>
-                                                </div>
-                                            {/each}
-                                        </div>
-                                    </div>
-
-                                    <a 
-                                        href="/booking"
-                                        class="w-full mt-4 bg-green-700 text-white px-6 py-3 text-lg font-bold rounded-none hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-yellow-400 block text-center"
-                                        aria-label="Book appointment with {doctor.name}"
-                                    >
-                                        BOOK WITH {doctor.name.toUpperCase()}
-                                    </a>
+                    <!-- Doctor List with Book buttons -->
+                    <div class="space-y-3 mb-6">
+                        {#each data.doctors.slice(0, 4) as doctor}
+                            <div class="flex items-center justify-between p-3 border border-gray-200 hover:border-gray-900 transition-colors">
+                                <div>
+                                    <p class="font-bold text-gray-900">{doctor.name}</p>
+                                    <p class="text-sm text-gray-500">{doctor.specialty}</p>
                                 </div>
-                            {/each}
-                        </div>
-                    {:else}
-                        <p class="text-base text-gray-700">No doctors available at this time.</p>
-                    {/if}
+                                <a 
+                                    href="/booking?doctor={doctor.doctor_id}"
+                                    class="bg-gray-900 text-white px-4 py-2 text-sm font-bold hover:bg-gray-800"
+                                >
+                                    BOOK →
+                                </a>
+                            </div>
+                        {/each}
+                    </div>
+
+                    <a 
+                        href="/booking" 
+                        class="block w-full text-center border-2 border-gray-900 py-3 font-bold hover:bg-gray-900 hover:text-white transition-colors"
+                    >
+                        VIEW ALL DOCTORS →
+                    </a>
 
                     <!-- Current Appointments -->
                     {#if data.appointments.length > 0}
-                        <div class="mt-6 pt-6 border-t-2 border-gray-300">
-                            <h3 class="text-xl font-bold text-gray-900 mb-4">Your Appointments</h3>
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            <h3 class="font-bold text-gray-900 mb-3">Your Appointments</h3>
                             {#each data.appointments as appointment}
-                                <div class="bg-blue-50 border-l-4 border-blue-600 p-4 mb-2">
-                                    <div class="flex justify-between items-start gap-4">
-                                        <div class="flex-1">
-                                            <p class="text-base font-bold text-gray-900">Doctor: {appointment.doctor_id}</p>
-                                            <p class="text-base text-gray-700">Time: {appointment.slot_time}</p>
-                                            <p class="text-sm text-gray-600">Status: {appointment.status}</p>
-                                        </div>
-                                        
-                                        <!-- T16: Cancel button for Story 10 -->
-                                        {#if appointment.status === 'Active'}
-                                            <form method="POST" action="?/cancelAppointment" class="flex-shrink-0">
-                                                <input type="hidden" name="app_id" value={appointment.app_id} />
-                                                <button 
-                                                    type="submit"
-                                                    class="bg-red-600 text-white px-4 py-2 text-sm font-bold rounded-none hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-yellow-400"
-                                                    onclick={(e) => {
-                                                        if (!confirm('Are you sure you want to cancel this appointment?')) {
-                                                            e.preventDefault();
-                                                        }
-                                                    }}
-                                                >
-                                                    CANCEL
-                                                </button>
-                                            </form>
-                                        {/if}
+                                <div class="flex items-center justify-between p-3 bg-blue-50 border-l-4 border-blue-600 mb-2">
+                                    <div>
+                                        <p class="text-sm font-bold">{appointment.doctor_id}</p>
+                                        <p class="text-sm text-gray-600">{formatSlotTime(appointment.slot_time)}</p>
                                     </div>
+                                    {#if appointment.status === 'Active'}
+                                        <form method="POST" action="?/cancelAppointment" use:enhance>
+                                            <input type="hidden" name="app_id" value={appointment.app_id} />
+                                            <button 
+                                                type="submit"
+                                                class="bg-red-600 text-white px-3 py-1 text-xs font-bold hover:bg-red-700"
+                                                onclick={(e) => { if (!confirm('Cancel?')) e.preventDefault(); }}
+                                            >
+                                                CANCEL
+                                            </button>
+                                        </form>
+                                    {/if}
                                 </div>
                             {/each}
                         </div>
                     {/if}
-                </section>
+                </div>
+            </section>
 
-                <!-- ACT_RECORD_FETCHER: Medical Records -->
-                <section class="bg-white border-4 border-gray-900 p-6" aria-label="Medical Records">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-2 uppercase">
-                        Medical Records
-                    </h2>
-                    <p class="text-base text-gray-600 mb-6">[ ACT_RECORD_FETCHER ]</p>
+            <!-- ACT_RECORD_FETCHER Module -->
+            <section class="border-2 border-gray-900 bg-white">
+                <div class="bg-gray-900 text-white px-4 py-2 text-sm font-bold">
+                    MODULE: FR4
+                </div>
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">ACT_RECORD_FETCHER</h2>
+                    <p class="text-sm text-gray-600 mb-1">Logic: SQL Join(Patient, Medical_Record).</p>
+                    <p class="text-sm text-gray-600 mb-6">Constraint: Read-Only Grid.</p>
 
                     {#if data.medicalRecords.length > 0}
-                        <!-- High-contrast list with NHS styling -->
-                        <div class="space-y-4" role="list">
+                        <div class="space-y-3">
                             {#each data.medicalRecords as record}
-                                <article 
-                                    class="bg-white border-2 border-gray-900 p-5 hover:bg-gray-50 focus-within:ring-4 focus-within:ring-yellow-400"
-                                    role="listitem"
-                                >
-                                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
-                                        <h3 class="text-lg font-bold text-gray-900">
-                                            Record #{record.record_id}
-                                        </h3>
-                                        <time 
-                                            datetime={record.entry_date}
-                                            class="text-base font-bold text-gray-700 bg-gray-100 px-3 py-1"
-                                        >
+                                <article class="p-4 border border-gray-200 hover:border-gray-900 transition-colors">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <span class="font-bold text-gray-900">Record #{record.record_id}</span>
+                                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1">
                                             {formatDate(record.entry_date)}
-                                        </time>
+                                        </span>
                                     </div>
-                                    
-                                    <p class="text-sm font-bold text-gray-600 mb-2">
-                                        Doctor: {record.doctor_id}
-                                    </p>
-                                    
-                                    <div class="bg-gray-50 border-l-4 border-blue-600 p-4">
-                                        <p class="text-base text-gray-900 leading-relaxed">
-                                            {record.notes}
-                                        </p>
-                                    </div>
-
+                                    <p class="text-sm text-gray-600 mb-2">Doctor: {record.doctor_id}</p>
+                                    <p class="text-sm text-gray-800 line-clamp-2">{record.notes}</p>
                                     <button 
                                         onclick={() => selectedRecord = record}
-                                        class="bg-gray-900 text-white px-4 py-2 font-bold hover:bg-gray-800 focus:ring-4 focus:ring-yellow-400"
+                                        class="mt-3 text-sm font-bold text-gray-900 underline hover:no-underline"
                                     >
-                                        VIEW FULL DETAILS
+                                        VIEW DETAILS →
                                     </button>
-                                    {#if selectedRecord}
-                                        <div class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
-                                            <div class="bg-white border-4 border-gray-900 p-8 max-w-lg w-full shadow-[12px_12px_0px_rgba(0,0,0,1)]">
-                                                <h2 class="text-2xl font-bold mb-4 uppercase border-b-4 border-gray-900 pb-2">Record #{selectedRecord.record_id}</h2>
-                                                <p class="text-lg leading-relaxed italic mb-6">"{selectedRecord.notes}"</p>
-                                                <button onclick={() => selectedRecord = null} class="w-full bg-red-700 text-white py-3 font-bold">CLOSE</button>
-                                            </div>
-                                        </div>
-                                    {/if}
                                 </article>
                             {/each}
                         </div>
                     {:else}
-                        <div class="border-l-4 border-gray-400 bg-gray-50 p-6">
-                            <p class="text-base font-bold text-gray-900 mb-2">No medical records found</p>
-                            <p class="text-base text-gray-700">Your medical records will appear here once they are added by your healthcare provider.</p>
+                        <div class="text-center py-8 text-gray-500">
+                            <p>No medical records found</p>
                         </div>
                     {/if}
-                </section>
-            </div>
+                </div>
+            </section>
+        </div>
 
-            <!-- Accessibility notice for Arthur -->
-            <aside class="mt-8 bg-blue-50 border-l-4 border-blue-600 p-6">
-                <h2 class="text-lg font-bold text-gray-900 mb-2">Accessibility Features (NFR3)</h2>
-                <ul class="space-y-2 text-base text-gray-900">
-                    <li>✓ High contrast design with 2px borders</li>
-                    <li>✓ Large, clear typography (minimum 16px)</li>
-                    <li>✓ Yellow focus indicators for keyboard navigation</li>
-                    <li>✓ Mobile-first responsive layout</li>
-                    <li>✓ Semantic HTML with ARIA labels</li>
-                </ul>
-            </aside>
+        <!-- Backlog Traceability matching wireframe -->
+        <aside class="mt-8 border-2 border-dashed border-gray-300 p-6 bg-white">
+            <p class="text-sm font-bold text-gray-400 mb-3">BACKLOG_TRACEABILITY:</p>
+            <ul class="text-sm text-gray-500 space-y-1">
+                <li>- Story 01: Secure authentication check per session.</li>
+                <li>- Story 02: Reactive load for availability display.</li>
+                <li>- NFR3: High-contrast accessibility design.</li>
+            </ul>
+        </aside>
+    </main>
+</div>
+
+<!-- Record Detail Modal -->
+{#if selectedRecord}
+    <div class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white border-4 border-gray-900 p-6 max-w-lg w-full">
+            <div class="flex justify-between items-start mb-4">
+                <h2 class="text-xl font-bold">Record #{selectedRecord.record_id}</h2>
+                <button onclick={() => selectedRecord = null} class="text-2xl font-bold hover:text-red-600">×</button>
+            </div>
+            <p class="text-sm text-gray-600 mb-1">Date: {formatDate(selectedRecord.entry_date)}</p>
+            <p class="text-sm text-gray-600 mb-4">Doctor: {selectedRecord.doctor_id}</p>
+            <div class="bg-gray-50 border-l-4 border-blue-600 p-4 mb-4">
+                <p class="text-gray-900">{selectedRecord.notes}</p>
+            </div>
+            <button 
+                onclick={() => selectedRecord = null} 
+                class="w-full bg-gray-900 text-white py-3 font-bold hover:bg-gray-800"
+            >
+                CLOSE
+            </button>
         </div>
     </div>
 {/if}

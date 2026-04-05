@@ -248,3 +248,168 @@ export function getPatientDetails(nhsNumber: string): { nhs_number: string; full
         return null;
     }
 }
+
+// ============= BOOKING SLOT OPERATIONS =============
+
+// Get all booked slots for a doctor on a specific date
+export function getBookedSlotsForDoctor(doctorId: string, date: string): string[] {
+    try {
+        const stmt = db.prepare(`
+            SELECT slot_time FROM appointments 
+            WHERE doctor_id = ? 
+            AND date(slot_time) = date(?)
+            AND status = 'Active'
+        `);
+        const slots = stmt.all(doctorId, date) as { slot_time: string }[];
+        return slots.map(s => s.slot_time);
+    } catch (error) {
+        console.error('Error fetching booked slots:', error);
+        return [];
+    }
+}
+
+// Get all unique specialties from doctors
+export function getAllSpecialties(): string[] {
+    try {
+        const stmt = db.prepare('SELECT DISTINCT specialty FROM doctors ORDER BY specialty');
+        const results = stmt.all() as { specialty: string }[];
+        return results.map(r => r.specialty);
+    } catch (error) {
+        console.error('Error fetching specialties:', error);
+        return [];
+    }
+}
+
+// Get doctors by specialty
+export function getDoctorsBySpecialty(specialty: string): Doctor[] {
+    try {
+        const stmt = db.prepare('SELECT * FROM doctors WHERE specialty = ?');
+        return stmt.all(specialty) as Doctor[];
+    } catch (error) {
+        console.error('Error fetching doctors by specialty:', error);
+        return [];
+    }
+}
+
+// Check if a specific slot is available for a doctor
+export function isSlotAvailable(doctorId: string, slotTime: string): boolean {
+    try {
+        const stmt = db.prepare(`
+            SELECT COUNT(*) as count FROM appointments 
+            WHERE doctor_id = ? AND slot_time = ? AND status = 'Active'
+        `);
+        const result = stmt.get(doctorId, slotTime) as { count: number };
+        return result.count === 0;
+    } catch (error) {
+        console.error('Error checking slot availability:', error);
+        return false;
+    }
+}
+
+// ============= REACTIVE AVAILABILITY (FR2) =============
+
+export interface SlotAvailability {
+    time: string;
+    status: 'READY' | 'BOOKED';
+    datetime?: string; // Full datetime for booking
+}
+
+// Get reactive availability for a doctor on a specific date
+// Derives status from actual appointments table, not static JSON
+export function getDoctorAvailabilityForDate(doctorId: string, date: string): SlotAvailability[] {
+    try {
+        const doctor = findDoctorById(doctorId);
+        if (!doctor) return [];
+
+        // Get the doctor's available time slots from their config
+        let timeSlots: string[] = [];
+        try {
+            timeSlots = JSON.parse(doctor.availability_json);
+        } catch {
+            // Default slots if JSON is invalid
+            timeSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "14:00", "14:30", "15:00", "15:30", "16:00"];
+        }
+
+        // Get all booked slots for this doctor on this date
+        const bookedSlots = getBookedSlotsForDoctor(doctorId, date);
+        const bookedTimes = new Set(bookedSlots.map(s => {
+            // Extract time portion from datetime
+            const parts = s.split(' ');
+            return parts.length > 1 ? parts[1] : s;
+        }));
+
+        // Build reactive availability
+        return timeSlots.map(time => ({
+            time,
+            status: bookedTimes.has(time) ? 'BOOKED' as const : 'READY' as const,
+            datetime: `${date} ${time}`
+        }));
+    } catch (error) {
+        console.error('Error getting doctor availability:', error);
+        return [];
+    }
+}
+
+// Get the next available slot for a doctor (from today onwards)
+export function getNextAvailableSlot(doctorId: string): { date: string; time: string; datetime: string } | null {
+    try {
+        const doctor = findDoctorById(doctorId);
+        if (!doctor) return null;
+
+        // Get time slots
+        let timeSlots: string[] = [];
+        try {
+            timeSlots = JSON.parse(doctor.availability_json);
+        } catch {
+            timeSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "14:00", "14:30", "15:00"];
+        }
+
+        // Check next 14 days
+        const today = new Date();
+        for (let i = 0; i < 14; i++) {
+            const checkDate = new Date(today);
+            checkDate.setDate(today.getDate() + i);
+            
+            // Skip weekends
+            const dayOfWeek = checkDate.getDay();
+            if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+
+            const dateStr = checkDate.toISOString().split('T')[0];
+            const availability = getDoctorAvailabilityForDate(doctorId, dateStr);
+            
+            // Find first READY slot
+            for (const slot of availability) {
+                if (slot.status === 'READY') {
+                    // If today, check if time hasn't passed
+                    if (i === 0) {
+                        const now = new Date();
+                        const [hours, mins] = slot.time.split(':').map(Number);
+                        const slotTime = new Date(today);
+                        slotTime.setHours(hours, mins, 0, 0);
+                        if (slotTime <= now) continue;
+                    }
+                    return {
+                        date: dateStr,
+                        time: slot.time,
+                        datetime: `${dateStr} ${slot.time}`
+                    };
+                }
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error('Error finding next available slot:', error);
+        return null;
+    }
+}
+
+// ============= AUDIT LOGGING ENHANCEMENTS (NFR1/GDPR) =============
+
+// Log individual medical record view (T14 compliance)
+export function logRecordView(nhsNumber: string, recordId: number): void {
+    createAuditLog(
+        nhsNumber,
+        'VIEW_RECORD_DETAIL',
+        `Patient viewed medical record #${recordId}`
+    );
+}

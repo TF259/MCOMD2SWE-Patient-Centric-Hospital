@@ -30,13 +30,14 @@ export function initializeDatabase() {
         );
     `);
 
-    // Doctors table
+    // Doctors table (with password_hash for secure auth - NFR1)
     db.exec(`
         CREATE TABLE IF NOT EXISTS doctors (
             doctor_id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             specialty TEXT NOT NULL,
-            availability_json TEXT NOT NULL
+            availability_json TEXT NOT NULL,
+            password_hash TEXT
         );
     `);
 
@@ -78,6 +79,13 @@ export function initializeDatabase() {
             details TEXT NOT NULL
         );
     `);
+
+    // Add password_hash column to doctors if it doesn't exist (migration)
+    try {
+        db.exec(`ALTER TABLE doctors ADD COLUMN password_hash TEXT`);
+    } catch (e) {
+        // Column already exists
+    }
 
     console.log('✅ Database schema initialized');
 }

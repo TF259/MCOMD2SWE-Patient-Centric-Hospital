@@ -96,7 +96,21 @@
                             placeholder="e.g., DR_SMITH_001"
                             class="block w-full px-4 py-3 text-lg border-2 border-gray-900 rounded-none focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:border-gray-900" 
                         />
-                        <p class="text-sm text-gray-500">Available: DR_SMITH_001, DR_MEHTA_005</p>
+                        <p class="text-sm text-gray-500">Available: DR_SMITH_001, DR_MEHTA_005, DR_PATEL_003</p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="doctor_password" class="block text-lg font-bold text-gray-900">
+                            Password
+                        </label>
+                        <input 
+                            type="password" 
+                            id="doctor_password"
+                            name="password" 
+                            required 
+                            class="block w-full px-4 py-3 text-lg border-2 border-gray-900 rounded-none focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:border-gray-900" 
+                        />
+                        <p class="text-sm text-gray-500">Test password: DoctorPass123!</p>
                     </div>
 
                     {#if form?.error && form?.loginType === 'doctor'}

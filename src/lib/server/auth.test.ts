@@ -3,7 +3,7 @@ import { validatePatient } from './auth';
 
 describe('Clinical Auth Logic (UT01 & UT02)', () => {
     it('should validate Arthur with correct credentials (UT01)', async () => {
-        const result = await validatePatient("1234567890", "arthur123");
+        const result = await validatePatient("1234567890", "SecurePass123!");
         expect(result).not.toBeNull();
         expect(result?.full_name).toBe("Arthur Retiree");
     });
@@ -19,13 +19,13 @@ describe('Clinical Auth Logic (UT01 & UT02)', () => {
     });
 
     it('should validate Sarah with correct credentials (UT04)', async () => {
-        const result = await validatePatient("0987654321", "sarah123");
+        const result = await validatePatient("0987654321", "SarahSecure456!");
         expect(result).not.toBeNull();
         expect(result?.full_name).toBe("Sarah Professional");
     });
 
     it('should fail for empty NHS number (UT05)', async () => {
-        const result = await validatePatient("", "arthur123");
+        const result = await validatePatient("", "SecurePass123!");
         expect(result).toBeNull();
     });
 
@@ -35,7 +35,7 @@ describe('Clinical Auth Logic (UT01 & UT02)', () => {
     });
 
     it('should fail for SQL injection attempt in NHS number (UT07)', async () => {
-        const result = await validatePatient("1234567890' OR '1'='1", "arthur123");
+        const result = await validatePatient("1234567890' OR '1'='1", "SecurePass123!");
         expect(result).toBeNull();
     });
 
@@ -45,12 +45,12 @@ describe('Clinical Auth Logic (UT01 & UT02)', () => {
     });
 
     it('should be case-sensitive for passwords (UT09)', async () => {
-        const result = await validatePatient("1234567890", "ARTHUR123");
+        const result = await validatePatient("1234567890", "SECUREPASS123!");
         expect(result).toBeNull();
     });
 
     it('should fail for whitespace-padded NHS number (UT10)', async () => {
-        const result = await validatePatient(" 1234567890 ", "arthur123");
+        const result = await validatePatient(" 1234567890 ", "SecurePass123!");
         expect(result).toBeNull();
     });
 });

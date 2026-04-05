@@ -14,6 +14,7 @@ export interface Doctor {
     name: string;
     specialty: string;
     availability_json: string; // Reactive map for real-time scheduling [cite: 160]
+    password_hash?: string; // Securely hashed (NFR1)
 }
 
 export interface Appointment {

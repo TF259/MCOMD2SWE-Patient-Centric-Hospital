@@ -5,17 +5,14 @@ import {
     getMedicalRecordsByNHS, 
     getAppointmentsByNHS,
     cancelAppointment as dbCancelAppointment,
-    createAuditLog
+    createAuditLog,
+    logRecordView
 } from '$lib/server/db-helpers';
 import { destroySession } from '../../hooks.server';
 import { redirect } from '@sveltejs/kit';
 import '$lib/server/db-seed'; // Ensure database is initialized
 
 export const load: PageServerLoad = async ({ locals }) => {
-    // Simulate load time for NFR2 demonstration (500ms for better UX during development)
-    // In production, remove this delay - real data fetching will be measured
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     const session = locals.session;
     
     // Check if user is a patient (not a doctor)
@@ -30,13 +27,12 @@ export const load: PageServerLoad = async ({ locals }) => {
     }
 
     // T14: Audit logging for GDPR/NFR1 compliance
-    // Log every access to medical records
     const patientRecords = getMedicalRecordsByNHS(session.nhs_number);
     
     createAuditLog(
         session.nhs_number,
-        'VIEW_RECORDS',
-        `Dashboard accessed - ${patientRecords.length} records viewed`
+        'VIEW_DASHBOARD',
+        `Dashboard accessed - ${patientRecords.length} records available`
     );
 
     // Get patient's appointments
@@ -63,7 +59,7 @@ export const actions = {
         throw redirect(303, '/');
     },
     
-    // T16: Admin functionality - Cancel appointment (Story 10)
+    // T16: Cancel appointment (Story 10)
     cancelAppointment: async ({ request, locals }) => {
         const session = locals.session;
         
@@ -74,14 +70,12 @@ export const actions = {
         const data = await request.formData();
         const app_id = parseInt(data.get('app_id') as string);
 
-        // Cancel appointment using database helper
         const result = dbCancelAppointment(app_id);
         
         if (!result.success) {
             return { error: result.error };
         }
 
-        // T14: Audit log for cancellation
         createAuditLog(
             session.nhs_number,
             'CANCEL_APPOINTMENT',
@@ -89,5 +83,22 @@ export const actions = {
         );
 
         throw redirect(303, '/dashboard?cancelled=true');
+    },
+
+    // T14: Log individual record view for GDPR compliance
+    viewRecord: async ({ request, locals }) => {
+        const session = locals.session;
+        
+        if (!session || session.type !== 'patient' || !session.nhs_number) {
+            return { error: 'Unauthorized' };
+        }
+
+        const data = await request.formData();
+        const record_id = parseInt(data.get('record_id') as string);
+
+        // Log the specific record access
+        logRecordView(session.nhs_number, record_id);
+
+        return { success: true };
     }
 } satisfies Actions;

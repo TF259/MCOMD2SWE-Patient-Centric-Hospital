@@ -1,128 +1,212 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
+    import { goto } from '$app/navigation';
     import type { PageData } from './$types';
     
-    // Svelte 5 Runes
     let { data, form }: { data: PageData; form: any } = $props();
+    
+    // Local state
+    let selectedSlot = $state('');
+
+    // Handle specialty filter change
+    function handleSpecialtyChange(e: Event) {
+        const value = (e.target as HTMLSelectElement).value;
+        const params = new URLSearchParams();
+        if (value) params.set('specialty', value);
+        goto(`/booking?${params.toString()}`);
+    }
+
+    // Handle doctor selection
+    function handleDoctorChange(e: Event) {
+        const value = (e.target as HTMLSelectElement).value;
+        const params = new URLSearchParams();
+        if (data.selectedSpecialty) params.set('specialty', data.selectedSpecialty);
+        if (value) params.set('doctor', value);
+        goto(`/booking?${params.toString()}`);
+    }
+
+    // Handle date change
+    function handleDateChange(e: Event) {
+        const value = (e.target as HTMLInputElement).value;
+        const params = new URLSearchParams();
+        if (data.selectedSpecialty) params.set('specialty', data.selectedSpecialty);
+        if (data.selectedDoctorId) params.set('doctor', data.selectedDoctorId);
+        if (value) params.set('date', value);
+        goto(`/booking?${params.toString()}`);
+    }
+
+    // Get minimum date (today)
+    function getMinDate(): string {
+        return new Date().toISOString().split('T')[0];
+    }
+
+    // Format date for display
+    function formatDate(dateStr: string): string {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
 </script>
 
-<div class="min-h-screen bg-white p-4 sm:p-6 lg:p-8">
-    <div class="max-w-4xl mx-auto">
-        <!-- Header -->
-        <header class="mb-8 pb-6 border-b-4 border-gray-900">
-            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <div>
-                    <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-                        Book Appointment
-                    </h1>
-                    <p class="text-base text-gray-600">[ FR3: Self-Service Booking Transaction ]</p>
-                </div>
-                <a 
-                    href="/dashboard" 
-                    class="bg-gray-900 text-white px-6 py-3 text-lg font-bold rounded-none hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-yellow-400 text-center"
-                >
-                    BACK TO DASHBOARD
-                </a>
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-gray-900 text-white px-6 py-4">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <span class="text-sm text-gray-400">MODULE:</span>
+                <span class="font-bold ml-2">REACTIVE_BOOKING_V2</span>
             </div>
-        </header>
+            <a href="/dashboard" class="border border-white px-4 py-2 text-sm font-bold hover:bg-white hover:text-gray-900 transition-colors">
+                ← BACK TO DASHBOARD
+            </a>
+        </div>
+    </header>
 
-        <!-- Booking Form -->
-        <div class="bg-white border-4 border-gray-900 p-6 sm:p-8 shadow-[8px_8px_0px_rgba(0,0,0,1)]">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6 uppercase">
-                Appointment Details
-            </h2>
+    <main class="max-w-4xl mx-auto p-6">
+        <!-- Two-column filter section matching wireframe -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Specialty Filter -->
+            <div class="border-2 border-gray-300 bg-white p-4">
+                <p class="text-xs text-gray-500 mb-1">ENTITY_REF: DOCTOR.SPECIALTY</p>
+                <select 
+                    value={data.selectedSpecialty}
+                    onchange={handleSpecialtyChange}
+                    class="w-full border-2 border-gray-900 p-3 font-bold bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                >
+                    <option value="">[ SELECT_FILTER: ALL SPECIALTIES ]</option>
+                    {#each data.specialties as specialty}
+                        <option value={specialty}>{specialty.toUpperCase()}</option>
+                    {/each}
+                </select>
+            </div>
 
-            <form method="POST" action="?/createAppointment" use:enhance class="space-y-6">
+            <!-- Date Constraint -->
+            <div class="border-2 border-gray-300 bg-white p-4">
+                <p class="text-xs text-gray-500 mb-1">CONSTRAINT: APPOINTMENT.SLOT_TIME</p>
+                <div class="border-2 border-gray-300 p-3 text-center">
+                    <span class="text-sm text-gray-600">Value:</span>
+                    <span class="font-bold ml-2">FUTURE_DATE_ONLY</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor Selection -->
+        {#if data.doctors.length > 0}
+            <div class="border-2 border-gray-300 bg-white p-4 mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">SELECT DOCTOR</label>
+                <select 
+                    value={data.selectedDoctorId}
+                    onchange={handleDoctorChange}
+                    class="w-full border-2 border-gray-900 p-3 font-bold bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                >
+                    <option value="">-- Choose a doctor --</option>
+                    {#each data.doctors as doctor}
+                        <option value={doctor.doctor_id}>
+                            {doctor.name} ({doctor.specialty})
+                        </option>
+                    {/each}
+                </select>
+            </div>
+        {:else}
+            <div class="border-2 border-gray-300 bg-white p-6 mb-6 text-center">
+                <p class="text-gray-600">No doctors available for selected specialty</p>
+            </div>
+        {/if}
+
+        <!-- Date Selection (only show when doctor selected) -->
+        {#if data.selectedDoctorId}
+            <div class="border-2 border-gray-300 bg-white p-4 mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">SELECT DATE</label>
+                <input 
+                    type="date"
+                    value={data.selectedDate}
+                    onchange={handleDateChange}
+                    min={getMinDate()}
+                    class="w-full border-2 border-gray-900 p-3 font-bold bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                />
+                {#if data.selectedDate}
+                    <p class="text-sm text-gray-600 mt-2">{formatDate(data.selectedDate)}</p>
+                {/if}
+            </div>
+        {/if}
+
+        <!-- Slot Grid (only show when doctor and date selected) -->
+        {#if data.selectedDoctorId && data.selectedDate && data.availability.length > 0}
+            <form method="POST" action="?/createAppointment" use:enhance>
+                <input type="hidden" name="doctor_id" value={data.selectedDoctorId} />
                 
-                <!-- Doctor Selection -->
-                <div class="space-y-2">
-                    <label for="doctor_id" class="block text-lg font-bold text-gray-900">
-                        Select Doctor
-                    </label>
-                    <select 
-                        id="doctor_id"
-                        name="doctor_id" 
-                        required
-                        class="block w-full px-3 py-3 text-lg border-2 border-gray-900 rounded-none focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:border-gray-900 bg-white"
-                    >
-                        <option value="">-- Choose a doctor --</option>
-                        {#each data.doctors as doctor}
-                            <option value={doctor.doctor_id}>
-                                {doctor.name} - {doctor.specialty}
-                            </option>
+                <div class="mb-6">
+                    <p class="text-sm font-bold text-gray-700 mb-4">AVAILABLE SLOTS FOR {formatDate(data.selectedDate).toUpperCase()}</p>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {#each data.availability as slot}
+                            <label class="relative cursor-pointer {slot.status === 'BOOKED' ? 'cursor-not-allowed' : ''}">
+                                <input 
+                                    type="radio" 
+                                    name="slot_datetime" 
+                                    value={slot.datetime}
+                                    required
+                                    disabled={slot.status === 'BOOKED'}
+                                    bind:group={selectedSlot}
+                                    class="sr-only peer"
+                                />
+                                <div class="p-4 text-center border-2 transition-all
+                                    {slot.status === 'BOOKED' 
+                                        ? 'bg-gray-100 border-gray-200 text-gray-400' 
+                                        : 'bg-gray-900 border-gray-900 text-white hover:bg-gray-800 peer-checked:bg-green-700 peer-checked:border-green-700'
+                                    }
+                                    peer-focus:ring-4 peer-focus:ring-yellow-400"
+                                >
+                                    <span class="text-xl font-bold block">{slot.time}</span>
+                                    <span class="text-xs block mt-1">STATE: {slot.status}</span>
+                                </div>
+                            </label>
                         {/each}
-                    </select>
-                    <p class="text-sm text-gray-600 mt-1">Select from available specialists</p>
+                    </div>
                 </div>
 
-                <!-- Slot Time (Date and Time Picker) -->
-                <div class="space-y-2">
-                    <label for="slot_time" class="block text-lg font-bold text-gray-900">
-                        Appointment Date & Time
-                    </label>
-                    <input 
-                        type="datetime-local"
-                        id="slot_time"
-                        name="slot_time" 
-                        required
-                        class="block w-full px-3 py-3 text-lg border-2 border-gray-900 rounded-none focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:border-gray-900"
-                    />
-                    <p class="text-sm text-gray-600 mt-1">Must be a future date and time (UT03 validation)</p>
-                </div>
-
-                <!-- Reason / Clinical Notes -->
-                <div class="space-y-2">
-                    <label for="reason" class="block text-lg font-bold text-gray-900">
-                        Reason for Visit (Clinical Notes)
-                    </label>
-                    <textarea 
-                        id="reason"
-                        name="reason"
-                        rows="6"
-                        placeholder="Please describe the reason for your appointment..."
-                        class="block w-full px-3 py-3 text-lg border-2 border-gray-900 rounded-none focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:border-gray-900 resize-none"
-                    ></textarea>
-                    <p class="text-sm text-gray-600 mt-1">Provide details to help your doctor prepare</p>
+                <!-- Acceptance Criteria -->
+                <div class="border-l-4 border-yellow-400 bg-yellow-50 p-4 mb-6">
+                    <p class="text-xs font-bold text-gray-500 mb-1">ACCEPTANCE_CRITERIA_CHECK</p>
+                    <p class="text-sm text-gray-700">
+                        Validation: If (Doctor && Date && Slot) == NULL → Disable(Book_Button)
+                    </p>
                 </div>
 
                 <!-- Error Message -->
                 {#if form?.error}
-                    <div class="border-l-4 border-red-600 bg-red-50 p-4">
-                        <p class="text-base font-bold text-red-900">{form.error}</p>
+                    <div class="border-l-4 border-red-600 bg-red-50 p-4 mb-6">
+                        <p class="font-bold text-red-900">{form.error}</p>
                     </div>
                 {/if}
 
                 <!-- Submit Button -->
                 <button 
                     type="submit" 
-                    class="w-full bg-green-700 text-white px-6 py-4 text-lg font-bold rounded-none hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-yellow-400 shadow-sm"
+                    disabled={!selectedSlot}
+                    class="w-full bg-gray-900 text-white px-6 py-4 text-lg font-bold 
+                           hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-yellow-400 
+                           disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                    CONFIRM BOOKING
+                    TRIGGER: CREATE_APPOINTMENT_ENTRY (STATUS=ACTIVE)
                 </button>
             </form>
-        </div>
+        {:else if data.selectedDoctorId && !data.selectedDate}
+            <div class="border-2 border-dashed border-gray-300 p-8 text-center text-gray-500">
+                <p>Select a date to view available time slots</p>
+            </div>
+        {:else if !data.selectedDoctorId}
+            <div class="border-2 border-dashed border-gray-300 p-8 text-center text-gray-500">
+                <p>Select a doctor to continue booking</p>
+            </div>
+        {/if}
 
-        <!-- Information Panel -->
-        <div class="mt-8 bg-blue-50 border-l-4 border-blue-600 p-6">
-            <h3 class="text-lg font-bold text-gray-900 mb-3">Before You Book</h3>
-            <ul class="space-y-2 text-base text-gray-900 list-disc list-inside">
-                <li>Appointments can only be scheduled for future dates</li>
-                <li>You will receive a confirmation after booking</li>
-                <li>Please arrive 10 minutes before your appointment time</li>
-                <li>Bring your NHS card and any relevant medical documents</li>
-            </ul>
-        </div>
-
-        <!-- Accessibility Features (NFR3) -->
-        <aside class="mt-8 bg-blue-50 border-l-4 border-blue-600 p-6">
-            <h2 class="text-lg font-bold text-gray-900 mb-2">Accessibility Features (NFR3)</h2>
-            <ul class="space-y-2 text-base text-gray-900">
-                <li>✓ High contrast design with 2px borders</li>
-                <li>✓ Large, clear typography (minimum 16px)</li>
-                <li>✓ Yellow focus indicators for keyboard navigation</li>
-                <li>✓ Mobile-first responsive layout</li>
-                <li>✓ Semantic HTML with ARIA labels</li>
-            </ul>
-        </aside>
-    </div>
+        <!-- Next Available Slot Hint -->
+        {#if data.nextAvailable && data.selectedDoctorId}
+            <div class="mt-4 bg-green-50 border border-green-200 p-4 text-sm">
+                <span class="font-bold text-green-800">Next available:</span>
+                <span class="text-green-700 ml-2">{data.nextAvailable.date} at {data.nextAvailable.time}</span>
+            </div>
+        {/if}
+    </main>
 </div>

@@ -65,6 +65,7 @@ export const actions = {
     doctorLogin: async ({ request, cookies }) => {
         const data = await request.formData();
         const doctor_id = data.get('doctor_id') as string;
+        const password = data.get('password') as string;
 
         if (!doctor_id || doctor_id.trim() === '') {
             return fail(400, { 
@@ -73,9 +74,17 @@ export const actions = {
             });
         }
 
+        if (!password || password.trim() === '') {
+            return fail(400, { 
+                error: 'Password is required',
+                loginType: 'doctor'
+            });
+        }
+
         const doctor = findDoctorById(doctor_id.trim());
 
-        if (!doctor) {
+        // NFR1: Secure authentication - verify password with bcrypt
+        if (!doctor || !doctor.password_hash || !(await bcrypt.compare(password, doctor.password_hash))) {
             createAuditLog(
                 doctor_id || 'UNKNOWN',
                 'FAILED_DOCTOR_LOGIN',
@@ -83,7 +92,7 @@ export const actions = {
             );
 
             return fail(400, { 
-                error: 'Invalid Doctor ID. Try DR_SMITH_001 or DR_MEHTA_005',
+                error: 'Invalid Doctor ID or Password',
                 loginType: 'doctor'
             });
         }
