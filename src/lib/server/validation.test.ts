@@ -1,6 +1,6 @@
 // src/lib/server/validation.test.ts
 import { describe, it, expect } from 'vitest';
-import { validateNHSNumber, validateAppointmentDate, validatePassword } from './validation';
+import { validateNHSNumber, validateAppointmentDate, validatePassword, validateDOB, validateDoctor } from './validation';
 
 describe('Input Validation (NFR1: Security)', () => {
     describe('NHS Number Validation (UT03)', () => {
@@ -106,6 +106,59 @@ describe('Input Validation (NFR1: Security)', () => {
             const result = validatePassword('');
             expect(result.valid).toBe(false);
             expect(result.error).toContain('required');
+        });
+    });
+
+    describe('DOB Validation (Story 07 - AC 7.2)', () => {
+        it('should accept valid past date', () => {
+            const result = validateDOB('1990-03-15');
+            expect(result.valid).toBe(true);
+        });
+
+        it('should reject future date (AC 7.2)', () => {
+            const futureDate = new Date();
+            futureDate.setFullYear(futureDate.getFullYear() + 1);
+            const dateStr = futureDate.toISOString().split('T')[0];
+            const result = validateDOB(dateStr);
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('future');
+        });
+
+        it('should reject empty DOB', () => {
+            const result = validateDOB('');
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('required');
+        });
+
+        it('should reject unreasonably old date (>150 years)', () => {
+            const result = validateDOB('1800-01-01');
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('invalid');
+        });
+    });
+
+    describe('Doctor ID Validation', () => {
+        it('should accept valid doctor ID', () => {
+            const result = validateDoctor('DR_SMITH_001');
+            expect(result.valid).toBe(true);
+        });
+
+        it('should reject empty doctor ID', () => {
+            const result = validateDoctor('');
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('required');
+        });
+
+        it('should reject whitespace-only doctor ID', () => {
+            const result = validateDoctor('   ');
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('required');
+        });
+
+        it('should reject very short doctor ID', () => {
+            const result = validateDoctor('DR');
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('invalid');
         });
     });
 });

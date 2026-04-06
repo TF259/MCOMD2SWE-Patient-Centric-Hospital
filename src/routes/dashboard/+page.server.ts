@@ -1,51 +1,81 @@
 // src/routes/dashboard/+page.server.ts
 import type { PageServerLoad, Actions } from './$types';
-import { 
-    getAllDoctors, 
-    getMedicalRecordsByNHS, 
+import {
+    getAllDoctors,
+    getMedicalRecordsByNHS,
+    searchMedicalRecords,
     getAppointmentsByNHS,
     cancelAppointment as dbCancelAppointment,
     createAuditLog,
-    logRecordView
+    logRecordView,
+    getPatientDetails
 } from '$lib/server/db-helpers';
 import { destroySession } from '../../hooks.server';
 import { redirect } from '@sveltejs/kit';
 import '$lib/server/db-seed'; // Ensure database is initialized
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
     const session = locals.session;
-    
+
     // Check if user is a patient (not a doctor)
     if (!session || session.type !== 'patient' || !session.nhs_number) {
         return {
             patient_name: 'Guest',
+            patient: null,
             nhs_number: null,
             doctors: [],
             medicalRecords: [],
-            appointments: []
+            appointments: [],
+            recordCount: 0
         };
     }
 
+    // Fetch patient profile details (NEW - Patient Info Display)
+    const patientDetails = getPatientDetails(session.nhs_number);
+
     // T14: Audit logging for GDPR/NFR1 compliance
     const patientRecords = getMedicalRecordsByNHS(session.nhs_number);
-    
+
     createAuditLog(
         session.nhs_number,
         'VIEW_DASHBOARD',
         `Dashboard accessed - ${patientRecords.length} records available`
     );
 
+    // Get search/filter parameters (NEW - Medical Records Search)
+    const searchTerm = url.searchParams.get('search') || '';
+    const doctorFilter = url.searchParams.get('doctor') || '';
+    const dateFrom = url.searchParams.get('date_from') || '';
+    const dateTo = url.searchParams.get('date_to') || '';
+
+    // Search medical records with filters
+    let medicalRecords = patientRecords;
+    if (searchTerm || doctorFilter || dateFrom || dateTo) {
+        medicalRecords = searchMedicalRecords(
+            session.nhs_number,
+            searchTerm,
+            doctorFilter,
+            dateFrom,
+            dateTo
+        );
+    }
+
     // Get patient's appointments
     const patientAppointments = getAppointmentsByNHS(session.nhs_number);
 
     return {
         patient_name: session.full_name,
+        patient: patientDetails,
         nhs_number: session.nhs_number,
         doctors: getAllDoctors(),
-        medicalRecords: patientRecords,
-        appointments: patientAppointments
+        medicalRecords,
+        appointments: patientAppointments,
+        recordCount: medicalRecords.length,
+        searchTerm,
+        doctorFilter
     };
 };
+
 
 export const actions = {
     logout: async ({ cookies }) => {

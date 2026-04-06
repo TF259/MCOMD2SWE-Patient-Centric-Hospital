@@ -81,6 +81,53 @@ export function validatePassword(password: string): ValidationResult {
 }
 
 /**
+ * Validates Date of Birth (Story 07 - AC 7.2: DOB cannot be empty or in the future)
+ */
+export function validateDOB(dob: string): ValidationResult {
+    if (!dob || !dob.trim()) {
+        return { valid: false, error: 'Date of birth is required' };
+    }
+
+    try {
+        const dobDate = new Date(dob);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (dobDate > today) {
+            return { valid: false, error: 'Date of birth cannot be in the future' };
+        }
+
+        // Optionally check for unreasonable ages (e.g., > 150 years)
+        const age = (today.getTime() - dobDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+        if (age > 150) {
+            return { valid: false, error: 'Date of birth appears to be invalid' };
+        }
+
+        return { valid: true };
+    } catch (error) {
+        return { valid: false, error: 'Invalid date format' };
+    }
+}
+
+/**
+ * Validates Doctor ID format (for login and identification)
+ */
+export function validateDoctor(doctorId: string): ValidationResult {
+    if (!doctorId || !doctorId.trim()) {
+        return { valid: false, error: 'Doctor ID is required' };
+    }
+
+    const trimmed = doctorId.trim();
+
+    // Check for reasonable length and format (e.g., DR_NAME_NNN)
+    if (trimmed.length < 5 || trimmed.length > 50) {
+        return { valid: false, error: 'Doctor ID format is invalid' };
+    }
+
+    return { valid: true };
+}
+
+/**
  * Sanitize input to prevent injection attacks
  */
 export function sanitizeInput(input: string): string {

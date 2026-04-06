@@ -55,27 +55,28 @@ export function getAppointmentsByNHS(nhsNumber: string): Appointment[] {
 export function createAppointment(
     nhsNumber: string,
     doctorId: string,
-    slotTime: string
+    slotTime: string,
+    reasonForVisit?: string
 ): { success: boolean; error?: string; appointmentId?: number } {
     try {
         // Check for double booking
         const existingStmt = db.prepare(`
-            SELECT COUNT(*) as count FROM appointments 
+            SELECT COUNT(*) as count FROM appointments
             WHERE doctor_id = ? AND slot_time = ? AND status = 'Active'
         `);
         const existing = existingStmt.get(doctorId, slotTime) as { count: number };
-        
+
         if (existing.count > 0) {
             return { success: false, error: 'This time slot is already booked' };
         }
 
-        // Create appointment
+        // Create appointment with reason for visit (Story 03)
         const insertStmt = db.prepare(`
-            INSERT INTO appointments (nhs_number, doctor_id, slot_time, status)
-            VALUES (?, ?, ?, 'Active')
+            INSERT INTO appointments (nhs_number, doctor_id, slot_time, reason_for_visit, status)
+            VALUES (?, ?, ?, ?, 'Active')
         `);
-        const result = insertStmt.run(nhsNumber, doctorId, slotTime);
-        
+        const result = insertStmt.run(nhsNumber, doctorId, slotTime, reasonForVisit || null);
+
         return { success: true, appointmentId: Number(result.lastInsertRowid) };
     } catch (error) {
         console.error('Error creating appointment:', error);
@@ -107,13 +108,58 @@ export function cancelAppointment(appId: number): { success: boolean; error?: st
 export function getMedicalRecordsByNHS(nhsNumber: string): MedicalRecord[] {
     try {
         const stmt = db.prepare(`
-            SELECT * FROM medical_records 
+            SELECT * FROM medical_records
             WHERE nhs_number = ?
             ORDER BY entry_date DESC
         `);
         return stmt.all(nhsNumber) as MedicalRecord[];
     } catch (error) {
         console.error('Error fetching medical records:', error);
+        return [];
+    }
+}
+
+// Search medical records with filters (Story 04 - Medical Records Search)
+export function searchMedicalRecords(
+    nhsNumber: string,
+    searchTerm?: string,
+    doctorFilter?: string,
+    dateFrom?: string,
+    dateTo?: string
+): MedicalRecord[] {
+    try {
+        let query = `
+            SELECT * FROM medical_records
+            WHERE nhs_number = ?
+        `;
+        const params: any[] = [nhsNumber];
+
+        if (searchTerm && searchTerm.trim()) {
+            query += ` AND notes LIKE ? `;
+            params.push(`%${searchTerm}%`);
+        }
+
+        if (doctorFilter && doctorFilter.trim()) {
+            query += ` AND doctor_id = ? `;
+            params.push(doctorFilter);
+        }
+
+        if (dateFrom) {
+            query += ` AND entry_date >= ? `;
+            params.push(dateFrom);
+        }
+
+        if (dateTo) {
+            query += ` AND entry_date <= ? `;
+            params.push(dateTo);
+        }
+
+        query += ` ORDER BY entry_date DESC`;
+
+        const stmt = db.prepare(query);
+        return stmt.all(...params) as MedicalRecord[];
+    } catch (error) {
+        console.error('Error searching medical records:', error);
         return [];
     }
 }
@@ -412,4 +458,186 @@ export function logRecordView(nhsNumber: string, recordId: number): void {
         'VIEW_RECORD_DETAIL',
         `Patient viewed medical record #${recordId}`
     );
+}
+
+// ============= GDPR COMPLIANCE (NFR1 - Data Subject Access & Right to Be Forgotten) =============
+
+/**
+ * Create a data export request (GDPR Subject Access Request)
+ */
+export function createDataExportRequest(
+    nhsNumber: string,
+    format: string,
+    includeAuditLogs: boolean
+): { success: boolean; requestId?: number; error?: string } {
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO data_export_requests (nhs_number, format, include_audit_logs, status)
+            VALUES (?, ?, ?, 'PENDING')
+        `);
+        const result = stmt.run(nhsNumber, format, includeAuditLogs ? 1 : 0);
+
+        createAuditLog(
+            nhsNumber,
+            'DATA_EXPORT_REQUEST',
+            `Patient requested data export in ${format} format (audit logs: ${includeAuditLogs})`
+        );
+
+        return { success: true, requestId: Number(result.lastInsertRowid) };
+    } catch (error) {
+        console.error('Error creating data export request:', error);
+        return { success: false, error: 'Failed to create export request' };
+    }
+}
+
+/**
+ * Create a deletion request (GDPR Right to Be Forgotten - Article 17)
+ */
+export function createDeletionRequest(
+    nhsNumber: string,
+    reason?: string
+): { success: boolean; requestId?: number; error?: string } {
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO deletion_requests (nhs_number, reason, status)
+            VALUES (?, ?, 'PENDING')
+        `);
+        const result = stmt.run(nhsNumber, reason || null);
+
+        createAuditLog(
+            nhsNumber,
+            'DELETION_REQUEST',
+            `Patient requested account deletion. Reason: ${reason || 'Not provided'}`
+        );
+
+        return { success: true, requestId: Number(result.lastInsertRowid) };
+    } catch (error) {
+        console.error('Error creating deletion request:', error);
+        return { success: false, error: 'Failed to create deletion request' };
+    }
+}
+
+/**
+ * Get data export requests for a patient
+ */
+export function getDataExportRequests(nhsNumber: string) {
+    try {
+        const stmt = db.prepare(`
+            SELECT * FROM data_export_requests
+            WHERE nhs_number = ?
+            ORDER BY created_at DESC
+        `);
+        return stmt.all(nhsNumber) as any[];
+    } catch (error) {
+        console.error('Error fetching export requests:', error);
+        return [];
+    }
+}
+
+/**
+ * Get deletion requests for a patient
+ */
+export function getDeletionRequests(nhsNumber: string) {
+    try {
+        const stmt = db.prepare(`
+            SELECT * FROM deletion_requests
+            WHERE nhs_number = ?
+            ORDER BY created_at DESC
+        `);
+        return stmt.all(nhsNumber) as any[];
+    } catch (error) {
+        console.error('Error fetching deletion requests:', error);
+        return [];
+    }
+}
+
+// ============= PATIENT REGISTRATION (Story 07) =============
+
+/**
+ * Generate unique NHS number
+ * AC 7.1: System must generate a unique nhs_number PK upon successful registration
+ */
+export function generateUniqueNHSNumber(): string {
+    let nhsNumber = '';
+    let isUnique = false;
+
+    while (!isUnique) {
+        // Generate random 10-digit number
+        nhsNumber = Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+
+        // Check if it already exists
+        const stmt = db.prepare('SELECT COUNT(*) as count FROM patients WHERE nhs_number = ?');
+        const result = stmt.get(nhsNumber) as { count: number };
+
+        if (result.count === 0) {
+            isUnique = true;
+        }
+    }
+
+    return nhsNumber;
+}
+
+/**
+ * Register new patient (Story 07)
+ * AC 7.2: Verification must fail if the DOB field is empty or in the future
+ */
+export function registerPatient(
+    fullName: string,
+    dob: string,
+    address: string,
+    passwordHash: string
+): { success: boolean; nhs_number?: string; error?: string } {
+    try {
+        // Validate inputs
+        if (!fullName || !dob || !address) {
+            return { success: false, error: 'All fields are required' };
+        }
+
+        // Validate DOB is not in the future
+        const dobDate = new Date(dob);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (dobDate > today) {
+            return { success: false, error: 'Date of birth cannot be in the future' };
+        }
+
+        // Validate minimum age (e.g., must be at least 0 days old, realistically older)
+        const ageMs = today.getTime() - dobDate.getTime();
+        const ageYears = ageMs / (365.25 * 24 * 60 * 60 * 1000);
+
+        if (ageYears < 0) {
+            return { success: false, error: 'Invalid date of birth' };
+        }
+
+        // Generate unique NHS number
+        const nhsNumber = generateUniqueNHSNumber();
+
+        // Insert new patient
+        const insertStmt = db.prepare(`
+            INSERT INTO patients (nhs_number, full_name, dob, address, password_hash, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `);
+
+        insertStmt.run(
+            nhsNumber,
+            fullName,
+            dob,
+            address,
+            passwordHash,
+            new Date().toISOString()
+        );
+
+        // Audit log for new patient registration
+        createAuditLog(
+            nhsNumber,
+            'PATIENT_REGISTRATION',
+            `New patient registered: ${fullName} (DOB: ${dob})`
+        );
+
+        return { success: true, nhs_number: nhsNumber };
+    } catch (error) {
+        console.error('Error registering patient:', error);
+        return { success: false, error: 'Failed to register patient' };
+    }
 }

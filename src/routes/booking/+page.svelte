@@ -165,6 +165,21 @@
                     </div>
                 </div>
 
+                <!-- Reason for Visit Field (Story 03 - Patient Chief Complaint Capture) -->
+                <div class="border-2 border-gray-300 bg-white p-4 mb-6">
+                    <label for="reason_for_visit" class="block text-sm font-bold text-gray-700 mb-2">
+                        Reason for Visit (Optional)
+                    </label>
+                    <textarea
+                        id="reason_for_visit"
+                        name="reason_for_visit"
+                        rows="3"
+                        placeholder="e.g., Persistent cough, annual check-up, follow-up appointment"
+                        class="w-full border-2 border-gray-300 p-3 font-normal bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    ></textarea>
+                    <p class="text-xs text-gray-500 mt-1">Briefly describe your chief complaint or reason for this appointment</p>
+                </div>
+
                 <!-- Acceptance Criteria -->
                 <div class="border-l-4 border-yellow-400 bg-yellow-50 p-4 mb-6">
                     <p class="text-xs font-bold text-gray-500 mb-1">ACCEPTANCE_CRITERIA_CHECK</p>

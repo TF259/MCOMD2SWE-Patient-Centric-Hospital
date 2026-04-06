@@ -144,5 +144,13 @@
                 <li>✓ Access is logged for GDPR compliance</li>
             </ul>
         </div>
+
+        <!-- Admin Registration Link -->
+        <div class="mt-4 text-center">
+            <p class="text-sm text-gray-600 mb-2">Is this a new patient? (Admin use only)</p>
+            <a href="/admin/register" class="inline-block bg-gray-900 text-white px-6 py-2 text-sm font-bold hover:bg-gray-800 transition-colors">
+                → Register New Patient (Story 07)
+            </a>
+        </div>
     </div>
 </div>

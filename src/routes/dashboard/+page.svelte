@@ -2,9 +2,11 @@
     import type { PageData } from './$types';
     import { page } from '$app/stores';
     import { enhance } from '$app/forms';
-    
+
     let { data }: { data: PageData } = $props();
     let selectedRecord = $state<any>(null);
+    let searchTerm = $state(data.searchTerm || '');
+    let selectedDoctorFilter = $state(data.doctorFilter || '');
 
     // Check for success/cancelled message from URL
     let showSuccess = $derived($page.url.searchParams.get('success') === 'true');
@@ -16,16 +18,31 @@
         return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     }
 
+    // Format date of birth
+    function formatDOB(dobStr: string) {
+        if (!dobStr) return 'N/A';
+        const date = new Date(dobStr + 'T00:00:00');
+        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
     // Format slot time
     function formatSlotTime(slotTime: string) {
         const date = new Date(slotTime.replace(' ', 'T'));
         return date.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
+    // Handle search
+    function handleSearch() {
+        const params = new URLSearchParams();
+        if (searchTerm) params.set('search', searchTerm);
+        if (selectedDoctorFilter) params.set('doctor', selectedDoctorFilter);
+        window.location.href = `/dashboard?${params.toString()}`;
+    }
+
     // Open record and log view (T14 GDPR compliance)
     function viewRecordDetail(record: any) {
         selectedRecord = record;
-        
+
         // Log the record view via form action
         const formData = new FormData();
         formData.append('record_id', record.record_id.toString());
@@ -72,6 +89,42 @@
         {#if showCancelled}
             <div class="mb-6 bg-blue-700 text-white p-4">
                 <span class="font-bold">Appointment cancelled</span>
+            </div>
+        {/if}
+
+        <!-- Patient Profile Section (NEW - Phase 2) -->
+        {#if data.patient}
+            <div class="bg-blue-50 border-4 border-blue-600 p-6 mb-8">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 mb-1">{data.patient.full_name}</h1>
+                        <div class="flex flex-wrap gap-4 mt-4">
+                            <div>
+                                <p class="text-xs text-gray-600 font-bold uppercase">NHS Number</p>
+                                <p class="text-lg font-mono font-bold text-blue-700">{data.patient.nhs_number}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-600 font-bold uppercase">Date of Birth</p>
+                                <p class="text-lg font-bold text-gray-900">{formatDOB(data.patient.dob)}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <p class="text-xs text-gray-600 font-bold uppercase">Address</p>
+                            <p class="text-base text-gray-900">{data.patient.address}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <a href="/audit-log" class="text-sm font-bold text-blue-600 hover:text-blue-700 underline">
+                            📋 View Audit Log
+                        </a>
+                        <a href="/privacy/data-request" class="text-sm font-bold text-blue-600 hover:text-blue-700 underline">
+                            📥 Request My Data (GDPR)
+                        </a>
+                        <a href="/privacy/deletion-request" class="text-sm font-bold text-red-600 hover:text-red-700 underline">
+                            🗑️ Request Deletion
+                        </a>
+                    </div>
+                </div>
             </div>
         {/if}
 
@@ -145,12 +198,56 @@
             <!-- ACT_RECORD_FETCHER Module -->
             <section class="border-2 border-gray-900 bg-white">
                 <div class="bg-gray-900 text-white px-4 py-2 text-sm font-bold">
-                    MODULE: FR4
+                    MODULE: FR4 - Medical Records Search
                 </div>
                 <div class="p-6">
                     <h2 class="text-2xl font-bold text-gray-900 mb-4">ACT_RECORD_FETCHER</h2>
                     <p class="text-sm text-gray-600 mb-1">Logic: SQL Join(Patient, Medical_Record).</p>
-                    <p class="text-sm text-gray-600 mb-6">Constraint: Read-Only Grid.</p>
+                    <p class="text-sm text-gray-600 mb-6">Constraint: Read-Only Grid + Search Filter.</p>
+
+                    <!-- Search & Filter Controls (NEW - Phase 3) -->
+                    <div class="mb-6 p-4 bg-gray-50 border-2 border-gray-300">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label for="search_input" class="block text-xs font-bold text-gray-700 mb-1">
+                                    Search Notes
+                                </label>
+                                <input
+                                    id="search_input"
+                                    type="text"
+                                    bind:value={searchTerm}
+                                    placeholder="Search by keyword..."
+                                    class="w-full px-3 py-2 border border-gray-300 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label for="doctor_filter" class="block text-xs font-bold text-gray-700 mb-1">
+                                    Filter by Doctor
+                                </label>
+                                <select
+                                    id="doctor_filter"
+                                    bind:value={selectedDoctorFilter}
+                                    class="w-full px-3 py-2 border border-gray-300 text-sm"
+                                >
+                                    <option value="">All Doctors</option>
+                                    {#each data.doctors as doctor}
+                                        <option value={doctor.doctor_id}>{doctor.name}</option>
+                                    {/each}
+                                </select>
+                            </div>
+                        </div>
+                        <button
+                            onclick={handleSearch}
+                            class="w-full bg-gray-900 text-white px-3 py-2 text-sm font-bold hover:bg-gray-800"
+                        >
+                            🔍 Search Records
+                        </button>
+                        {#if searchTerm || selectedDoctorFilter}
+                            <p class="text-xs text-gray-600 mt-2">
+                                Found {data.recordCount} record{data.recordCount !== 1 ? 's' : ''}
+                            </p>
+                        {/if}
+                    </div>
 
                     {#if data.medicalRecords.length > 0}
                         <div class="space-y-3">
@@ -164,7 +261,7 @@
                                     </div>
                                     <p class="text-sm text-gray-600 mb-2">Doctor: {record.doctor_id}</p>
                                     <p class="text-sm text-gray-800 line-clamp-2">{record.notes}</p>
-                                    <button 
+                                    <button
                                         onclick={() => viewRecordDetail(record)}
                                         class="mt-3 text-sm font-bold text-gray-900 underline hover:no-underline"
                                     >
@@ -208,8 +305,40 @@
                 <p class="text-gray-900">{selectedRecord.notes}</p>
             </div>
             <p class="text-xs text-gray-400 mb-4">T14: This view has been logged for GDPR compliance</p>
-            <button 
-                onclick={() => selectedRecord = null} 
+
+            <!-- Action Buttons (NEW - Phase 4) -->
+            <div class="grid grid-cols-3 gap-2 mb-4">
+                <button
+                    onclick={() => window.print()}
+                    class="bg-gray-600 text-white py-2 px-3 text-xs font-bold hover:bg-gray-700 flex items-center justify-center gap-1"
+                >
+                    🖨️ PRINT
+                </button>
+                <button
+                    onclick={() => {
+                        // Simple download via data URL
+                        const content = `MEDICAL RECORD #${selectedRecord.record_id}\n\nDate: ${formatDate(selectedRecord.entry_date)}\nDoctor: ${selectedRecord.doctor_id}\n\nNotes:\n${selectedRecord.notes}`;
+                        const blob = new Blob([content], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `record_${selectedRecord.record_id}.txt`;
+                        a.click();
+                    }}
+                    class="bg-blue-600 text-white py-2 px-3 text-xs font-bold hover:bg-blue-700 flex items-center justify-center gap-1"
+                >
+                    ⬇️ DOWNLOAD
+                </button>
+                <a
+                    href="/privacy/data-request"
+                    class="bg-green-600 text-white py-2 px-3 text-xs font-bold hover:bg-green-700 flex items-center justify-center gap-1 text-center"
+                >
+                    📋 REQUEST
+                </a>
+            </div>
+
+            <button
+                onclick={() => selectedRecord = null}
                 class="w-full bg-gray-900 text-white py-3 font-bold hover:bg-gray-800"
             >
                 CLOSE

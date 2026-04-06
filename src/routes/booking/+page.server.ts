@@ -69,7 +69,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 export const actions = {
     createAppointment: async ({ request, locals }) => {
         const session = locals.session;
-        
+
         if (!session || session.type !== 'patient' || !session.nhs_number) {
             throw redirect(303, '/');
         }
@@ -77,10 +77,11 @@ export const actions = {
         const data = await request.formData();
         const doctor_id = data.get('doctor_id') as string;
         const slot_datetime = data.get('slot_datetime') as string;
+        const reason_for_visit = data.get('reason_for_visit') as string | null;
 
         // Validate required fields
         if (!doctor_id || !slot_datetime) {
-            return fail(400, { 
+            return fail(400, {
                 error: 'Please select a doctor and time slot'
             });
         }
@@ -88,16 +89,21 @@ export const actions = {
         // Validation (UT03): Ensure the slot is a future date
         const dateValidation = validateAppointmentDate(slot_datetime);
         if (!dateValidation.valid) {
-            return fail(400, { 
+            return fail(400, {
                 error: dateValidation.error
             });
         }
 
         // UT04: Double-booking prevention via database
-        const result = createAppointment(session.nhs_number, doctor_id, slot_datetime);
+        const result = createAppointment(
+            session.nhs_number,
+            doctor_id,
+            slot_datetime,
+            reason_for_visit || undefined
+        );
 
         if (!result.success) {
-            return fail(400, { 
+            return fail(400, {
                 error: result.error || 'This slot is no longer available'
             });
         }
@@ -106,7 +112,7 @@ export const actions = {
         createAuditLog(
             session.nhs_number,
             'CREATE_APPOINTMENT',
-            `Patient booked appointment #${result.appointmentId} with ${doctor_id} at ${slot_datetime}`
+            `Patient booked appointment #${result.appointmentId} with ${doctor_id} at ${slot_datetime}${reason_for_visit ? ` - Reason: ${reason_for_visit}` : ''}`
         );
 
         // Redirect to dashboard with success message

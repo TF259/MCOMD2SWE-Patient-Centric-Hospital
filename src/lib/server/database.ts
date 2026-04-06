@@ -41,13 +41,14 @@ export function initializeDatabase() {
         );
     `);
 
-    // Appointments table
+    // Appointments table (Story 03 - with reason_for_visit field)
     db.exec(`
         CREATE TABLE IF NOT EXISTS appointments (
             app_id INTEGER PRIMARY KEY AUTOINCREMENT,
             nhs_number TEXT NOT NULL,
             doctor_id TEXT NOT NULL,
             slot_time TEXT NOT NULL,
+            reason_for_visit TEXT,
             status TEXT NOT NULL CHECK(status IN ('Active', 'Completed', 'Cancelled')),
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (nhs_number) REFERENCES patients(nhs_number),
@@ -80,9 +81,41 @@ export function initializeDatabase() {
         );
     `);
 
+    // Data Export Requests (GDPR Subject Access Request - SAR)
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS data_export_requests (
+            request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nhs_number TEXT NOT NULL,
+            format TEXT CHECK(format IN ('PDF', 'CSV', 'JSON')),
+            include_audit_logs BOOLEAN DEFAULT 1,
+            status TEXT DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'COMPLETED', 'FAILED')),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (nhs_number) REFERENCES patients(nhs_number)
+        );
+    `);
+
+    // Deletion Requests (GDPR Right to Be Forgotten - Article 17)
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS deletion_requests (
+            request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nhs_number TEXT NOT NULL,
+            reason TEXT,
+            status TEXT DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'APPROVED', 'COMPLETED')),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (nhs_number) REFERENCES patients(nhs_number)
+        );
+    `);
+
     // Add password_hash column to doctors if it doesn't exist (migration)
     try {
         db.exec(`ALTER TABLE doctors ADD COLUMN password_hash TEXT`);
+    } catch (e) {
+        // Column already exists
+    }
+
+    // Add reason_for_visit column to appointments if it doesn't exist (migration for Story 03)
+    try {
+        db.exec(`ALTER TABLE appointments ADD COLUMN reason_for_visit TEXT`);
     } catch (e) {
         // Column already exists
     }
