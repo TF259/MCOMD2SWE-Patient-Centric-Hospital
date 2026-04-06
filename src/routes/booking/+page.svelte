@@ -2,11 +2,18 @@
     import { enhance } from '$app/forms';
     import { goto } from '$app/navigation';
     import type { PageData } from './$types';
-    
+    import PageLoadingIndicator from '$lib/components/PageLoadingIndicator.svelte';
+
     let { data, form }: { data: PageData; form: any } = $props();
-    
+
     // Local state
     let selectedSlot = $state('');
+    let selectedDate = $state(data.selectedDate);
+
+    // Sync selectedDate with data.selectedDate when it changes
+    $effect(() => {
+        selectedDate = data.selectedDate;
+    });
 
     // Handle specialty filter change
     function handleSpecialtyChange(e: Event) {
@@ -47,22 +54,24 @@
         return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     }
 
-    // Auto-select first available slot when availability changes
-    function autoSelectFirstAvailable() {
+    // Auto-select first available slot
+    let firstAvailable = $derived.by(() => {
         if (data.availability.length > 0) {
-            const firstAvailable = data.availability.find(s => s.status !== 'BOOKED');
-            if (firstAvailable && !selectedSlot) {
-                selectedSlot = firstAvailable.datetime;
-            }
+            return data.availability.find(s => s.status !== 'BOOKED')?.datetime || '';
         }
-    }
+        return '';
+    });
 
+    // Set selectedSlot to first available when it changes
     $effect(() => {
-        if (data.selectedDoctorId && data.selectedDate) {
-            autoSelectFirstAvailable();
+        if (firstAvailable) {
+            selectedSlot = firstAvailable;
         }
     });
 </script>
+
+<!-- Page Loading Indicator -->
+<PageLoadingIndicator />
 
 <div class="min-h-screen bg-gray-50">
     <!-- Header -->
@@ -143,15 +152,15 @@
         {#if data.selectedDoctorId}
             <div class="border-2 border-gray-300 bg-white p-4 mb-6">
                 <label class="block text-sm font-bold text-gray-700 mb-2">SELECT DATE</label>
-                <input 
+                <input
                     type="date"
-                    value={data.selectedDate}
+                    bind:value={selectedDate}
                     onchange={handleDateChange}
                     min={getMinDate()}
                     class="w-full border-2 border-gray-900 p-3 font-bold bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 />
-                {#if data.selectedDate}
-                    <p class="text-sm text-gray-600 mt-2">{formatDate(data.selectedDate)}</p>
+                {#if selectedDate}
+                    <p class="text-sm text-gray-600 mt-2">{formatDate(selectedDate)}</p>
                 {/if}
             </div>
         {/if}

@@ -25,18 +25,26 @@ export function seedDatabase() {
     if (patientCount.count > 0) {
         console.log('⚠️  Database already seeded, checking for migrations...');
 
-        // Migration: Fill in blank addresses with random ones
-        const blankAddressCount = db.prepare("SELECT COUNT(*) as count FROM patients WHERE address IS NULL OR address = ''").get() as { count: number };
-        if (blankAddressCount.count > 0) {
-            console.log(`🔄 Migrating ${blankAddressCount.count} blank addresses...`);
-            const patients = db.prepare("SELECT nhs_number FROM patients WHERE address IS NULL OR address = ''").all() as { nhs_number: string }[];
-            const updateStmt = db.prepare('UPDATE patients SET address = ? WHERE nhs_number = ?');
+        // Migration: Fill in blank or null addresses with random ones
+        try {
+            const blankAddressesSql = "SELECT COUNT(*) as count FROM patients WHERE address IS NULL OR address = '' OR address LIKE '%null%'";
+            const blankAddressCount = db.prepare(blankAddressesSql).get() as { count: number };
 
-            patients.forEach(patient => {
-                updateStmt.run(generateRandomAddress(), patient.nhs_number);
-            });
+            if (blankAddressCount.count > 0) {
+                console.log(`🔄 Migrating ${blankAddressCount.count} blank/missing addresses...`);
+                const patients = db.prepare("SELECT nhs_number FROM patients WHERE address IS NULL OR address = '' OR address LIKE '%null%'").all() as { nhs_number: string }[];
+                const updateStmt = db.prepare('UPDATE patients SET address = ? WHERE nhs_number = ?');
 
-            console.log(`✅ Updated ${blankAddressCount.count} addresses`);
+                patients.forEach(patient => {
+                    const newAddress = generateRandomAddress();
+                    console.log(`  - Assigning address to ${patient.nhs_number}: ${newAddress}`);
+                    updateStmt.run(newAddress, patient.nhs_number);
+                });
+
+                console.log(`✅ Updated ${blankAddressCount.count} addresses`);
+            }
+        } catch (error) {
+            console.log('Migration check completed');
         }
         return;
     }

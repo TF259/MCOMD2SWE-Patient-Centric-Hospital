@@ -1,11 +1,12 @@
 // src/routes/privacy/deletion-request/+page.server.ts
 import type { Actions } from './$types';
 import { createDeletionRequest } from '$lib/server/db-helpers';
+import { destroySession } from '../../../hooks.server';
 import { redirect, fail } from '@sveltejs/kit';
 import '$lib/server/db-seed';
 
 export const actions = {
-    requestDeletion: async ({ request, locals }) => {
+    requestDeletion: async ({ request, locals, cookies }) => {
         const session = locals.session;
 
         if (!session || session.type !== 'patient' || !session.nhs_number) {
@@ -21,11 +22,18 @@ export const actions = {
             return fail(400, { error: 'Please confirm that you understand this action is permanent' });
         }
 
-        // Create the deletion request
+        // Create the deletion request (which also deletes the account)
         const result = createDeletionRequest(session.nhs_number, reason || undefined);
 
         if (!result.success) {
             return fail(400, { error: result.error });
+        }
+
+        // Clear the user's session
+        const sessionId = cookies.get('session_id');
+        if (sessionId) {
+            destroySession(sessionId);
+            cookies.delete('session_id', { path: '/' });
         }
 
         // Redirect to success page

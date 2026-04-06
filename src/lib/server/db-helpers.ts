@@ -297,14 +297,14 @@ export function completeAppointment(appId: number, notes?: string): { success: b
 }
 
 // Get patient details by NHS number (for doctor view)
-export function getPatientDetails(nhsNumber: string): { nhs_number: string; full_name: string; dob: string } | null {
+export function getPatientDetails(nhsNumber: string): { nhs_number: string; full_name: string; dob: string; address: string } | null {
     try {
         const stmt = db.prepare(`
-            SELECT nhs_number, full_name, dob
+            SELECT nhs_number, full_name, dob, address
             FROM patients
             WHERE nhs_number = ?
         `);
-        return stmt.get(nhsNumber) as { nhs_number: string; full_name: string; dob: string } | null;
+        return stmt.get(nhsNumber) as { nhs_number: string; full_name: string; dob: string; address: string } | null;
     } catch (error) {
         console.error('Error fetching patient details:', error);
         return null;

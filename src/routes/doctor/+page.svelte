@@ -3,7 +3,7 @@
     import type { Appointment } from '$lib/types';
     import { page } from '$app/stores';
     import { enhance } from '$app/forms';
-    import { goto } from '$app/navigation';
+    import { goto, invalidateAll } from '$app/navigation';
 
     let { data, form }: { data: PageData; form: ActionData } = $props();
     let isLoading = $state(true);
@@ -12,6 +12,8 @@
     let reasonModalType = $state<'complete' | 'cancel' | null>(null);
     let reasonModalAppId = $state<number | null>(null);
     let reasonText = $state('');
+    let showDetailsModal = $state(false);
+    let selectedHistoryAppointment = $state<Appointment | null>(null);
 
     // Check for success messages from URL
     let showCompleted = $derived($page.url.searchParams.get('completed') === 'true');
@@ -77,6 +79,18 @@
         reasonText = '';
     }
 
+    // Open details modal for history
+    function openDetailsModal(appointment: Appointment) {
+        selectedHistoryAppointment = appointment;
+        showDetailsModal = true;
+    }
+
+    // Close details modal
+    function closeDetailsModal() {
+        showDetailsModal = false;
+        selectedHistoryAppointment = null;
+    }
+
     // Submit action with optional reason
     function submitWithReason() {
         if (!reasonModalAppId || !reasonModalType) return;
@@ -92,9 +106,10 @@
         fetch(action, {
             method: 'POST',
             body: form
-        }).then(() => {
+        }).then(async () => {
             closeReasonModal();
-            // Page will reload via use:enhance
+            // Invalidate all data to refresh the page after action completes
+            await invalidateAll();
         });
     }
 </script>
@@ -145,17 +160,7 @@
                             {data.doctor?.specialty} | ID: {data.doctor?.doctor_id}
                         </p>
                     </div>
-                    <div class="flex flex-col sm:items-end gap-2">
-                        <form method="POST" action="?/logout" use:enhance>
-                            <button 
-                                type="submit"
-                                class="bg-gray-900 text-white px-6 py-3 text-lg font-bold hover:bg-gray-800 focus:outline-none focus:ring-4 focus:ring-yellow-400"
-                            >
-                                LOGOUT
-                            </button>
-                        </form>
-                        <p class="text-sm text-gray-500">NFR2_METRIC: {data.loadTime}ms</p>
-                    </div>
+                    <p class="text-sm text-gray-500">Load time: {data.loadTime}ms</p>
                 </div>
             </header>
 
@@ -369,6 +374,13 @@
                                                 NHS: {appointment.nhs_number}
                                             </p>
                                         </div>
+                                        <button
+                                            type="button"
+                                            onclick={() => openDetailsModal(appointment)}
+                                            class="bg-gray-900 text-white px-4 py-2 font-bold hover:bg-gray-800 transition-colors whitespace-nowrap"
+                                        >
+                                            View Details
+                                        </button>
                                     </div>
                                 </div>
                             {/each}
@@ -381,6 +393,67 @@
                     {/if}
                 {/if}
             </div>
+
+            <!-- Appointment Details Modal -->
+            {#if showDetailsModal && selectedHistoryAppointment}
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white border-4 border-gray-900 max-w-lg w-full shadow-2xl">
+                        <div class="bg-gray-900 text-white px-6 py-4 font-bold text-lg">
+                            APPOINTMENT DETAILS
+                        </div>
+                        <div class="p-6">
+                            <!-- Patient Information -->
+                            <div class="mb-6">
+                                <h3 class="text-sm font-bold text-gray-600 uppercase mb-2">Patient</h3>
+                                <p class="text-lg font-bold text-gray-900">{selectedHistoryAppointment.patient_name || 'Unknown'}</p>
+                                <p class="text-base text-gray-600">NHS: {selectedHistoryAppointment.nhs_number}</p>
+                            </div>
+
+                            <!-- Appointment Details -->
+                            <div class="mb-6">
+                                <h3 class="text-sm font-bold text-gray-600 uppercase mb-2">Date & Time</h3>
+                                <p class="text-base font-bold text-gray-900">{formatDateTime(selectedHistoryAppointment.slot_time)}</p>
+                            </div>
+
+                            <!-- Status -->
+                            <div class="mb-6">
+                                <h3 class="text-sm font-bold text-gray-600 uppercase mb-2">Status</h3>
+                                <span class="inline-block px-3 py-1 text-sm font-bold {
+                                    selectedHistoryAppointment.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                                    selectedHistoryAppointment.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                }">
+                                    {selectedHistoryAppointment.status}
+                                </span>
+                            </div>
+
+                            <!-- Completion/Cancellation Notes -->
+                            {#if selectedHistoryAppointment.completion_notes}
+                                <div class="mb-6">
+                                    <h3 class="text-sm font-bold text-gray-600 uppercase mb-2">Notes</h3>
+                                    <div class="bg-gray-50 border-2 border-gray-200 p-4 rounded">
+                                        <p class="text-base text-gray-900">{selectedHistoryAppointment.completion_notes}</p>
+                                    </div>
+                                </div>
+                            {:else}
+                                <div class="mb-6">
+                                    <h3 class="text-sm font-bold text-gray-600 uppercase mb-2">Notes</h3>
+                                    <p class="text-base text-gray-500 italic">No notes recorded</p>
+                                </div>
+                            {/if}
+
+                            <!-- Close Button -->
+                            <button
+                                type="button"
+                                onclick={closeDetailsModal}
+                                class="w-full bg-gray-900 text-white px-4 py-3 font-bold hover:bg-gray-800 transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {/if}
 
             <!-- Story 05 Traceability -->
             <aside class="mt-8 bg-blue-50 border-l-4 border-blue-600 p-6">

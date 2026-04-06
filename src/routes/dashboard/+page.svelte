@@ -2,7 +2,9 @@
     import type { PageData } from './$types';
     import { page } from '$app/stores';
     import { goto } from '$app/navigation';
+    import { afterNavigate } from '$app/navigation';
     import { enhance } from '$app/forms';
+    import PageLoadingIndicator from '$lib/components/PageLoadingIndicator.svelte';
 
     let { data }: { data: PageData } = $props();
     let selectedRecord = $state<any>(null);
@@ -12,6 +14,15 @@
     // Check for success/cancelled message from URL
     let showSuccess = $derived($page.url.searchParams.get('success') === 'true');
     let showCancelled = $derived($page.url.searchParams.get('cancelled') === 'true');
+
+    // Restore scroll position after navigation completes
+    afterNavigate(() => {
+        const savedScrollY = sessionStorage.getItem('dashboardScrollY');
+        if (savedScrollY) {
+            window.scrollTo(0, parseInt(savedScrollY));
+            sessionStorage.removeItem('dashboardScrollY');
+        }
+    });
 
     // Format date for display
     function formatDate(dateStr: string) {
@@ -45,17 +56,6 @@
         await goto(`/dashboard?${params.toString()}`, { noscroll: true });
     }
 
-    // Restore scroll position after page loads
-    $effect(() => {
-        const savedScrollY = sessionStorage.getItem('dashboardScrollY');
-        if (savedScrollY) {
-            setTimeout(() => {
-                window.scrollTo(0, parseInt(savedScrollY));
-                sessionStorage.removeItem('dashboardScrollY');
-            }, 100);
-        }
-    });
-
     // Open record and log view (T14 GDPR compliance)
     function viewRecordDetail(record: any) {
         selectedRecord = record;
@@ -70,28 +70,10 @@
     }
 </script>
 
-<div class="min-h-screen bg-gray-50">
-    <!-- Header matching wireframe exactly -->
-    <header class="bg-white border-b-4 border-gray-900 px-6 py-6">
-        <div class="max-w-6xl mx-auto">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-sm text-gray-400 mb-1">ARCH_TYPE: CENTRAL_CONTROLLER</p>
-                    <h1 class="text-3xl font-bold text-gray-900">PATIENT_DASHBOARD</h1>
-                    <p class="text-sm text-gray-500 mt-1">[ VIEW: /dashboard/{data.nhs_number} ]</p>
-                </div>
-                <form method="POST" action="?/logout" use:enhance>
-                    <button 
-                        type="submit"
-                        class="border-2 border-gray-900 px-4 py-2 text-sm font-bold hover:bg-gray-900 hover:text-white transition-colors"
-                    >
-                        FUNC: CLEAR_SESSION
-                    </button>
-                </form>
-            </div>
-        </div>
-    </header>
+<!-- Page Loading Indicator -->
+<PageLoadingIndicator />
 
+<div class="bg-gray-50 min-h-screen">
     <main class="max-w-6xl mx-auto p-6">
         <!-- Success/Cancelled Banners -->
         {#if showSuccess}
@@ -145,20 +127,16 @@
             </div>
         {/if}
 
-        <!-- Two-column module layout matching wireframe -->
+        <!-- Two-column layout -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <!-- ACT_SCHEDULING_ENGINE Module -->
+
+            <!-- Doctors & Appointments Section -->
             <section class="border-2 border-gray-900 bg-white">
                 <div class="bg-gray-900 text-white px-4 py-2 text-sm font-bold">
-                    MODULE: FR2/FR3
+                    Available Doctors
                 </div>
                 <div class="p-6">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-4">ACT_SCHEDULING_ENGINE</h2>
-                    <p class="text-sm text-gray-600 mb-1">Logic: Fetch DOCTOR.availability_json.</p>
-                    <p class="text-sm text-gray-600 mb-6">State: Real-time Slot Ticker.</p>
-
-                    <!-- Doctor List with Book buttons and availability stats -->
+                    <!-- Doctor List with Book buttons -->
                     <div class="space-y-3 mb-6">
                         {#each data.doctors.slice(0, 4) as doctor}
                             <div class="flex items-center justify-between p-3 border border-gray-200 hover:border-gray-900 transition-colors">
@@ -232,17 +210,13 @@
                 </div>
             </section>
 
-            <!-- ACT_RECORD_FETCHER Module -->
+            <!-- Medical Records Section -->
             <section class="border-2 border-gray-900 bg-white">
                 <div class="bg-gray-900 text-white px-4 py-2 text-sm font-bold">
-                    MODULE: FR4 - Medical Records Search
+                    Medical Records
                 </div>
                 <div class="p-6">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-4">ACT_RECORD_FETCHER</h2>
-                    <p class="text-sm text-gray-600 mb-1">Logic: SQL Join(Patient, Medical_Record).</p>
-                    <p class="text-sm text-gray-600 mb-6">Constraint: Read-Only Grid + Search Filter.</p>
-
-                    <!-- Search & Filter Controls (NEW - Phase 3) -->
+                    <!-- Search & Filter Controls -->
                     <div class="mb-6 p-4 bg-gray-50 border-2 border-gray-300">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                             <div>
@@ -315,16 +289,6 @@
                 </div>
             </section>
         </div>
-
-        <!-- Backlog Traceability matching wireframe -->
-        <aside class="mt-8 border-2 border-dashed border-gray-300 p-6 bg-white">
-            <p class="text-sm font-bold text-gray-400 mb-3">BACKLOG_TRACEABILITY:</p>
-            <ul class="text-sm text-gray-500 space-y-1">
-                <li>- Story 01: Secure authentication check per session.</li>
-                <li>- Story 02: Reactive load for availability display.</li>
-                <li>- NFR3: High-contrast accessibility design.</li>
-            </ul>
-        </aside>
     </main>
 </div>
 
@@ -341,9 +305,8 @@
             <div class="bg-gray-50 border-l-4 border-blue-600 p-4 mb-4">
                 <p class="text-gray-900">{selectedRecord.notes}</p>
             </div>
-            <p class="text-xs text-gray-400 mb-4">T14: This view has been logged for GDPR compliance</p>
 
-            <!-- Action Buttons (NEW - Phase 4) -->
+            <!-- Action Buttons -->
             <div class="grid grid-cols-3 gap-2 mb-4">
                 <button
                     onclick={() => window.print()}
