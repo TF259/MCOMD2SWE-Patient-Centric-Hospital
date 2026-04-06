@@ -92,25 +92,39 @@
     }
 
     // Submit action with optional reason
-    function submitWithReason() {
+    async function submitWithReason() {
         if (!reasonModalAppId || !reasonModalType) return;
 
-        const form = new FormData();
-        form.append('app_id', reasonModalAppId.toString());
+        const formData = new FormData();
+        formData.append('app_id', reasonModalAppId.toString());
         if (reasonText.trim()) {
-            form.append('notes', reasonText);
+            formData.append('notes', reasonText);
         }
 
         const action = reasonModalType === 'complete' ? '?/completeAppointment' : '?/cancelAppointment';
 
-        fetch(action, {
-            method: 'POST',
-            body: form
-        }).then(async () => {
+        try {
+            const response = await fetch(action, {
+                method: 'POST',
+                body: formData
+            });
+
+            // Check if response is a redirect (success case from server)
+            if (response.redirected || response.ok) {
+                closeReasonModal();
+                // Use goto to navigate which properly handles the redirect
+                await goto(response.url || '/doctor?updated=true', { invalidateAll: true });
+            } else {
+                // Handle error response
+                console.error('Action failed with status:', response.status);
+                closeReasonModal();
+                await invalidateAll();
+            }
+        } catch (error) {
+            console.error('Request failed:', error);
             closeReasonModal();
-            // Invalidate all data to refresh the page after action completes
             await invalidateAll();
-        });
+        }
     }
 </script>
 

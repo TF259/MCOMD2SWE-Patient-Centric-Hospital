@@ -1,8 +1,10 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
+    import { goto } from '$app/navigation';
     let { form } = $props();
     
     let activeTab = $state<'patient' | 'doctor'>(form?.loginType === 'doctor' ? 'doctor' : 'patient');
+    let isSubmitting = $state(false);
 </script>
 
 <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4">
@@ -43,7 +45,17 @@
             <div class="p-8">
                 {#if activeTab === 'patient'}
                     <!-- Patient Login -->
-                    <form method="POST" action="?/login" use:enhance class="space-y-6">
+                    <form method="POST" action="?/login" use:enhance={() => {
+                        isSubmitting = true;
+                        return async ({ result, update }) => {
+                            isSubmitting = false;
+                            if (result.type === 'redirect') {
+                                await goto(result.location);
+                            } else {
+                                await update();
+                            }
+                        };
+                    }} class="space-y-6">
                         <div>
                             <label for="nhs_number" class="block text-sm font-bold text-gray-900 mb-2">
                                 NHS Number
@@ -56,7 +68,7 @@
                                 placeholder="1234567890"
                                 class="w-full px-4 py-3 border-2 border-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                             />
-                            <p class="text-xs text-gray-500 mt-1">Test: 1234567890</p>
+                            <p class="text-xs text-gray-500 mt-1">Test users: 1234567890 (Arthur) or 0987654321 (Sarah)</p>
                         </div>
                         
                         <div>
@@ -70,7 +82,7 @@
                                 required 
                                 class="w-full px-4 py-3 border-2 border-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                             />
-                            <p class="text-xs text-gray-500 mt-1">Test password: SecurePass123!</p>
+                            <p class="text-xs text-gray-500 mt-1">Passwords: SecurePass123! (Arthur) or SarahSecure456! (Sarah)</p>
                         </div>
 
                         {#if form?.error && form?.loginType === 'patient'}
@@ -80,15 +92,26 @@
                         {/if}
 
                         <button 
-                            type="submit" 
-                            class="w-full bg-blue-600 text-white px-6 py-4 text-lg font-bold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors"
+                            type="submit"
+                            disabled={isSubmitting}
+                            class="w-full bg-blue-600 text-white px-6 py-4 text-lg font-bold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            ACCESS PATIENT PORTAL
+                            {isSubmitting ? 'LOGGING IN...' : 'ACCESS PATIENT PORTAL'}
                         </button>
                     </form>
                 {:else}
                     <!-- Doctor Login -->
-                    <form method="POST" action="?/doctorLogin" use:enhance class="space-y-6">
+                    <form method="POST" action="?/doctorLogin" use:enhance={() => {
+                        isSubmitting = true;
+                        return async ({ result, update }) => {
+                            isSubmitting = false;
+                            if (result.type === 'redirect') {
+                                await goto(result.location);
+                            } else {
+                                await update();
+                            }
+                        };
+                    }} class="space-y-6">
                         <div>
                             <label for="doctor_id" class="block text-sm font-bold text-gray-900 mb-2">
                                 Clinician ID
@@ -125,10 +148,11 @@
                         {/if}
 
                         <button 
-                            type="submit" 
-                            class="w-full bg-blue-600 text-white px-6 py-4 text-lg font-bold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors"
+                            type="submit"
+                            disabled={isSubmitting}
+                            class="w-full bg-blue-600 text-white px-6 py-4 text-lg font-bold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            ACCESS CLINICIAN PORTAL
+                            {isSubmitting ? 'LOGGING IN...' : 'ACCESS CLINICIAN PORTAL'}
                         </button>
                     </form>
                 {/if}

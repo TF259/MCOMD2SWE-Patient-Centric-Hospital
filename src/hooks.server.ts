@@ -1,5 +1,6 @@
 // src/hooks.server.ts
 import type { Handle } from '@sveltejs/kit';
+import crypto from 'crypto';
 
 // Session types for different user roles
 interface PatientSession {
@@ -32,8 +33,8 @@ const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_LOGIN_ATTEMPTS = 5;
 
-// Session expiration (1 hour)
-const SESSION_TTL_MS = 60 * 60 * 1000;
+// Session expiration (24 hours - matches patient cookie maxAge)
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Check if an IP/identifier is rate limited

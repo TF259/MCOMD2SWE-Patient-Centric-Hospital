@@ -2,6 +2,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { registerPatient, createAuditLog } from '$lib/server/db-helpers';
+import { validatePassword } from '$lib/server/validation';
 import bcrypt from 'bcryptjs';
 import '$lib/server/db-seed'; // Ensure database is initialized
 
@@ -22,6 +23,15 @@ export const actions = {
             });
         }
 
+        // Validate date of birth format (must be a valid date)
+        const dobDate = new Date(dob);
+        if (isNaN(dobDate.getTime())) {
+            return fail(400, {
+                error: 'Invalid date of birth format',
+                fullName
+            });
+        }
+
         // Validate password confirmation
         if (password !== confirmPassword) {
             return fail(400, {
@@ -30,10 +40,11 @@ export const actions = {
             });
         }
 
-        // Validate password length
-        if (password.length < 6) {
+        // Validate password strength (NFR1: Security)
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.valid) {
             return fail(400, {
-                error: 'Password must be at least 6 characters',
+                error: passwordValidation.error,
                 fullName
             });
         }

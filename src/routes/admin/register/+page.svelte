@@ -1,7 +1,9 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
+    import { goto } from '$app/navigation';
 
     let { form } = $props();
+    let isSubmitting = $state(false);
 
     // Format date input to YYYY-MM-DD
     function formatDateForInput(): string {
@@ -33,7 +35,17 @@
             </div>
 
             <div class="p-8">
-                <form method="POST" action="?/register" use:enhance class="space-y-6">
+                <form method="POST" action="?/register" use:enhance={() => {
+                    isSubmitting = true;
+                    return async ({ result, update }) => {
+                        isSubmitting = false;
+                        if (result.type === 'redirect') {
+                            await goto(result.location);
+                        } else {
+                            await update();
+                        }
+                    };
+                }} class="space-y-6">
                     <!-- Full Name -->
                     <div>
                         <label for="full_name" class="block text-sm font-bold text-gray-900 mb-2">
@@ -125,9 +137,10 @@
                     <!-- Submit Button -->
                     <button
                         type="submit"
-                        class="w-full bg-blue-600 text-white px-6 py-4 text-lg font-bold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors"
+                        disabled={isSubmitting}
+                        class="w-full bg-blue-600 text-white px-6 py-4 text-lg font-bold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        CREATE NEW PATIENT RECORD
+                        {isSubmitting ? 'CREATING...' : 'CREATE NEW PATIENT RECORD'}
                     </button>
                 </form>
 

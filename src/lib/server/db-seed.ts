@@ -48,6 +48,41 @@ export function seedDatabase() {
         } catch {
             // Migration check completed
         }
+
+        // Migration: Ensure seeded patients have valid password hashes
+        // This fixes issues where bcrypt hash validation may have changed or DB was seeded incorrectly
+        try {
+            const ARTHUR_PASSWORD = process.env.SEED_PATIENT_PASSWORD || 'SecurePass123!';
+            const SARAH_PASSWORD = process.env.SEED_PATIENT_PASSWORD_2 || 'SarahSecure456!';
+            const DOCTOR_PASSWORD = process.env.SEED_DOCTOR_PASSWORD || 'DoctorPass123!';
+
+            // Check and update Arthur's password if needed
+            const arthur = db.prepare('SELECT password_hash FROM patients WHERE nhs_number = ?').get('1234567890') as { password_hash: string } | undefined;
+            if (arthur && !bcrypt.compareSync(ARTHUR_PASSWORD, arthur.password_hash)) {
+                const newHash = bcrypt.hashSync(ARTHUR_PASSWORD, 10);
+                db.prepare('UPDATE patients SET password_hash = ? WHERE nhs_number = ?').run(newHash, '1234567890');
+            }
+
+            // Check and update Sarah's password if needed
+            const sarah = db.prepare('SELECT password_hash FROM patients WHERE nhs_number = ?').get('0987654321') as { password_hash: string } | undefined;
+            if (sarah && !bcrypt.compareSync(SARAH_PASSWORD, sarah.password_hash)) {
+                const newHash = bcrypt.hashSync(SARAH_PASSWORD, 10);
+                db.prepare('UPDATE patients SET password_hash = ? WHERE nhs_number = ?').run(newHash, '0987654321');
+            }
+
+            // Check and update doctor passwords if needed
+            const doctors = db.prepare('SELECT doctor_id, password_hash FROM doctors WHERE password_hash IS NOT NULL').all() as { doctor_id: string; password_hash: string }[];
+            const docHashUpdate = db.prepare('UPDATE doctors SET password_hash = ? WHERE doctor_id = ?');
+            for (const doctor of doctors) {
+                if (!bcrypt.compareSync(DOCTOR_PASSWORD, doctor.password_hash)) {
+                    const newHash = bcrypt.hashSync(DOCTOR_PASSWORD, 10);
+                    docHashUpdate.run(newHash, doctor.doctor_id);
+                }
+            }
+        } catch {
+            // Password migration completed or already up to date
+        }
+
         return;
     }
 

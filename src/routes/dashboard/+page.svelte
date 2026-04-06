@@ -60,12 +60,15 @@
     function viewRecordDetail(record: any) {
         selectedRecord = record;
 
-        // Log the record view via form action
+        // Log the record view via form action (fire-and-forget with error handling)
         const formData = new FormData();
         formData.append('record_id', record.record_id.toString());
         fetch('?/viewRecord', {
             method: 'POST',
             body: formData
+        }).catch(error => {
+            // Silent failure is acceptable for audit logging - don't block the user
+            console.error('Failed to log record view:', error);
         });
     }
 </script>

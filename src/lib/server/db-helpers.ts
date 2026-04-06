@@ -1,6 +1,7 @@
 // src/lib/server/db-helpers.ts
 // Database wrapper functions for CRUD operations
 import db from './database';
+import crypto from 'crypto';
 import type { Patient, Doctor, Appointment, MedicalRecord, AuditLog } from '$lib/types';
 
 // ============= PATIENT OPERATIONS =============
@@ -75,26 +76,34 @@ export function createAppointment(
     reasonForVisit?: string
 ): { success: boolean; error?: string; appointmentId?: number } {
     try {
-        // Check for double booking
-        const existingStmt = db.prepare(`
-            SELECT COUNT(*) as count FROM appointments
-            WHERE doctor_id = ? AND slot_time = ? AND status = 'Active'
-        `);
-        const existing = existingStmt.get(doctorId, slotTime) as { count: number };
+        // Use transaction to prevent race condition in double-booking check
+        const transaction = db.transaction(() => {
+            // Check for double booking within transaction
+            const existingStmt = db.prepare(`
+                SELECT COUNT(*) as count FROM appointments
+                WHERE doctor_id = ? AND slot_time = ? AND status = 'Active'
+            `);
+            const existing = existingStmt.get(doctorId, slotTime) as { count: number };
 
-        if (existing.count > 0) {
+            if (existing.count > 0) {
+                throw new Error('SLOT_ALREADY_BOOKED');
+            }
+
+            // Create appointment with reason for visit (Story 03)
+            const insertStmt = db.prepare(`
+                INSERT INTO appointments (nhs_number, doctor_id, slot_time, reason_for_visit, status)
+                VALUES (?, ?, ?, ?, 'Active')
+            `);
+            const result = insertStmt.run(nhsNumber, doctorId, slotTime, reasonForVisit || null);
+            return Number(result.lastInsertRowid);
+        });
+
+        const appointmentId = transaction();
+        return { success: true, appointmentId };
+    } catch (error) {
+        if (error instanceof Error && error.message === 'SLOT_ALREADY_BOOKED') {
             return { success: false, error: 'This time slot is already booked' };
         }
-
-        // Create appointment with reason for visit (Story 03)
-        const insertStmt = db.prepare(`
-            INSERT INTO appointments (nhs_number, doctor_id, slot_time, reason_for_visit, status)
-            VALUES (?, ?, ?, ?, 'Active')
-        `);
-        const result = insertStmt.run(nhsNumber, doctorId, slotTime, reasonForVisit || null);
-
-        return { success: true, appointmentId: Number(result.lastInsertRowid) };
-    } catch (error) {
         console.error('Error creating appointment:', error);
         return { success: false, error: 'Failed to create appointment' };
     }
@@ -467,7 +476,8 @@ export function getNextAvailableSlot(doctorId: string): { date: string; time: st
         try {
             timeSlots = JSON.parse(doctor.availability_json);
         } catch {
-            timeSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "14:00", "14:30", "15:00"];
+            // Default slots if JSON is invalid - must match getDoctorAvailabilityForDate
+            timeSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "14:00", "14:30", "15:00", "15:30", "16:00"];
         }
 
         // Check next 14 days
@@ -604,6 +614,13 @@ export function createDeletionRequest(
     reason?: string
 ): { success: boolean; requestId?: number; error?: string } {
     try {
+        // Create audit log BEFORE deleting the account (audit_logs doesn't have FK constraint)
+        createAuditLog(
+            nhsNumber,
+            'DELETION_REQUEST',
+            `Account deletion request processed. Reason: ${reason || 'Not provided'}. Account will be permanently deleted.`
+        );
+
         const stmt = db.prepare(`
             INSERT INTO deletion_requests (nhs_number, reason, status)
             VALUES (?, ?, 'COMPLETED')
@@ -616,12 +633,6 @@ export function createDeletionRequest(
         if (!deleteResult.success) {
             return { success: false, error: deleteResult.error };
         }
-
-        createAuditLog(
-            nhsNumber,
-            'DELETION_REQUEST',
-            `Account deletion request processed. Reason: ${reason || 'Not provided'}. Account has been permanently deleted.`
-        );
 
         return { success: true, requestId: Number(result.lastInsertRowid) };
     } catch (error) {
@@ -673,7 +684,6 @@ export function getDeletionRequests(nhsNumber: string) {
 export function generateUniqueNHSNumber(): string {
     let nhsNumber = '';
     let isUnique = false;
-    const crypto = require('crypto');
 
     while (!isUnique) {
         // Generate cryptographically secure random 10-digit number
