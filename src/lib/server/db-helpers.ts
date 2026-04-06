@@ -121,14 +121,16 @@ export function cancelAppointment(appId: number, notes?: string): { success: boo
 }
 
 // ============= MEDICAL RECORDS OPERATIONS =============
-export function getMedicalRecordsByNHS(nhsNumber: string): MedicalRecord[] {
+export function getMedicalRecordsByNHS(nhsNumber: string): (MedicalRecord & { doctor_name?: string; specialty?: string })[] {
     try {
         const stmt = db.prepare(`
-            SELECT * FROM medical_records
-            WHERE nhs_number = ?
-            ORDER BY entry_date DESC
+            SELECT m.*, d.name as doctor_name, d.specialty
+            FROM medical_records m
+            LEFT JOIN doctors d ON m.doctor_id = d.doctor_id
+            WHERE m.nhs_number = ?
+            ORDER BY m.entry_date DESC
         `);
-        return stmt.all(nhsNumber) as MedicalRecord[];
+        return stmt.all(nhsNumber) as (MedicalRecord & { doctor_name?: string; specialty?: string })[];
     } catch (error) {
         console.error('Error fetching medical records:', error);
         return [];
@@ -142,38 +144,40 @@ export function searchMedicalRecords(
     doctorFilter?: string,
     dateFrom?: string,
     dateTo?: string
-): MedicalRecord[] {
+): (MedicalRecord & { doctor_name?: string; specialty?: string })[] {
     try {
         let query = `
-            SELECT * FROM medical_records
-            WHERE nhs_number = ?
+            SELECT m.*, d.name as doctor_name, d.specialty
+            FROM medical_records m
+            LEFT JOIN doctors d ON m.doctor_id = d.doctor_id
+            WHERE m.nhs_number = ?
         `;
         const params: any[] = [nhsNumber];
 
         if (searchTerm && searchTerm.trim()) {
-            query += ` AND notes LIKE ? `;
+            query += ` AND m.notes LIKE ? `;
             params.push(`%${searchTerm}%`);
         }
 
         if (doctorFilter && doctorFilter.trim()) {
-            query += ` AND doctor_id = ? `;
+            query += ` AND m.doctor_id = ? `;
             params.push(doctorFilter);
         }
 
         if (dateFrom) {
-            query += ` AND entry_date >= ? `;
+            query += ` AND m.entry_date >= ? `;
             params.push(dateFrom);
         }
 
         if (dateTo) {
-            query += ` AND entry_date <= ? `;
+            query += ` AND m.entry_date <= ? `;
             params.push(dateTo);
         }
 
-        query += ` ORDER BY entry_date DESC`;
+        query += ` ORDER BY m.entry_date DESC`;
 
         const stmt = db.prepare(query);
-        return stmt.all(...params) as MedicalRecord[];
+        return stmt.all(...params) as (MedicalRecord & { doctor_name?: string; specialty?: string })[];
     } catch (error) {
         console.error('Error searching medical records:', error);
         return [];

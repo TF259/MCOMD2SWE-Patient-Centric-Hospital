@@ -262,21 +262,36 @@
 
                     {#if data.medicalRecords.length > 0}
                         <div class="space-y-3">
-                            {#each data.medicalRecords as record}
-                                <article class="p-4 border border-gray-200 hover:border-gray-900 transition-colors">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <span class="font-bold text-gray-900">Record #{record.record_id}</span>
-                                        <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1">
+                            {#each data.medicalRecords as record, index}
+                                <article class="p-4 border-2 border-gray-200 hover:border-gray-900 transition-all bg-white">
+                                    <div class="flex justify-between items-start mb-3">
+                                        <div>
+                                            <p class="text-xs font-bold text-gray-500 uppercase mb-1">
+                                                {index === 0 ? '📅 Most Recent' : index === data.medicalRecords.length - 1 ? '📋 Oldest' : ''}
+                                            </p>
+                                            <h3 class="text-lg font-bold text-gray-900">
+                                                Record {index + 1} of {data.medicalRecords.length}
+                                            </h3>
+                                        </div>
+                                        <span class="text-xs font-bold text-white bg-gray-900 px-3 py-2 rounded">
                                             {formatDate(record.entry_date)}
                                         </span>
                                     </div>
-                                    <p class="text-sm text-gray-600 mb-2">Doctor: {record.doctor_id}</p>
-                                    <p class="text-sm text-gray-800 line-clamp-2">{record.notes}</p>
+
+                                    <div class="mb-3 pb-3 border-b border-gray-200">
+                                        <p class="text-sm text-gray-600 font-bold">
+                                            {record.doctor_name || record.doctor_id}
+                                            {record.specialty ? ` - ${record.specialty}` : ''}
+                                        </p>
+                                    </div>
+
+                                    <p class="text-sm text-gray-800 line-clamp-3 mb-3 leading-relaxed">{record.notes}</p>
+
                                     <button
                                         onclick={() => viewRecordDetail(record)}
-                                        class="mt-3 text-sm font-bold text-gray-900 underline hover:no-underline"
+                                        class="w-full bg-gray-900 text-white px-4 py-2 font-bold hover:bg-gray-800 transition-colors"
                                     >
-                                        VIEW DETAILS →
+                                        → VIEW FULL DETAILS
                                     </button>
                                 </article>
                             {/each}
@@ -297,11 +312,16 @@
     <div class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
         <div class="bg-white border-4 border-gray-900 p-6 max-w-lg w-full">
             <div class="flex justify-between items-start mb-4">
-                <h2 class="text-xl font-bold">Record #{selectedRecord.record_id}</h2>
+                <h2 class="text-xl font-bold">Medical Record</h2>
                 <button onclick={() => selectedRecord = null} class="text-2xl font-bold hover:text-red-600">×</button>
             </div>
-            <p class="text-sm text-gray-600 mb-1">Date: {formatDate(selectedRecord.entry_date)}</p>
-            <p class="text-sm text-gray-600 mb-4">Doctor: {selectedRecord.doctor_id}</p>
+            <p class="text-sm text-gray-600 mb-1">
+                <span class="font-bold">Date:</span> {formatDate(selectedRecord.entry_date)}
+            </p>
+            <p class="text-sm text-gray-600 mb-4">
+                <span class="font-bold">Doctor:</span> {selectedRecord.doctor_name || selectedRecord.doctor_id}
+                {selectedRecord.specialty ? ` (${selectedRecord.specialty})` : ''}
+            </p>
             <div class="bg-gray-50 border-l-4 border-blue-600 p-4 mb-4">
                 <p class="text-gray-900">{selectedRecord.notes}</p>
             </div>
@@ -317,7 +337,7 @@
                 <button
                     onclick={() => {
                         // Simple download via data URL
-                        const content = `MEDICAL RECORD #${selectedRecord.record_id}\n\nDate: ${formatDate(selectedRecord.entry_date)}\nDoctor: ${selectedRecord.doctor_id}\n\nNotes:\n${selectedRecord.notes}`;
+                        const content = `MEDICAL RECORD\n\nDate: ${formatDate(selectedRecord.entry_date)}\nDoctor: ${selectedRecord.doctor_name || selectedRecord.doctor_id}${selectedRecord.specialty ? ` (${selectedRecord.specialty})` : ''}\n\nNotes:\n${selectedRecord.notes}`;
                         const blob = new Blob([content], { type: 'text/plain' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
