@@ -91,15 +91,33 @@ describe('Input Validation (NFR1: Security)', () => {
     });
 
     describe('Password Validation', () => {
-        it('should accept valid password', () => {
-            const result = validatePassword('secure123');
+        it('should accept valid password with uppercase, lowercase, and number', () => {
+            const result = validatePassword('Secure123');
             expect(result.valid).toBe(true);
         });
 
-        it('should reject password shorter than 6 characters', () => {
-            const result = validatePassword('short');
+        it('should reject password shorter than 8 characters', () => {
+            const result = validatePassword('Short1');
             expect(result.valid).toBe(false);
-            expect(result.error).toContain('6 characters');
+            expect(result.error).toContain('8 characters');
+        });
+
+        it('should reject password without uppercase letter', () => {
+            const result = validatePassword('secure123');
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('uppercase');
+        });
+
+        it('should reject password without lowercase letter', () => {
+            const result = validatePassword('SECURE123');
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('lowercase');
+        });
+
+        it('should reject password without number', () => {
+            const result = validatePassword('SecurePass');
+            expect(result.valid).toBe(false);
+            expect(result.error).toContain('number');
         });
 
         it('should reject empty password', () => {
