@@ -120,6 +120,13 @@ export function initializeDatabase() {
         // Column already exists
     }
 
+    // Add completion_notes column to appointments for doctor feedback
+    try {
+        db.exec(`ALTER TABLE appointments ADD COLUMN completion_notes TEXT`);
+    } catch (e) {
+        // Column already exists
+    }
+
     console.log('✅ Database schema initialized');
 }
 

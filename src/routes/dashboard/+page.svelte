@@ -1,6 +1,7 @@
 <script lang="ts">
     import type { PageData } from './$types';
     import { page } from '$app/stores';
+    import { goto } from '$app/navigation';
     import { enhance } from '$app/forms';
 
     let { data }: { data: PageData } = $props();
@@ -31,13 +32,29 @@
         return date.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
-    // Handle search
-    function handleSearch() {
+    // Handle search - preserve scroll position
+    async function handleSearch() {
+        // Save current scroll position before navigation
+        const scrollY = window.scrollY;
+        sessionStorage.setItem('dashboardScrollY', scrollY.toString());
+
         const params = new URLSearchParams();
         if (searchTerm) params.set('search', searchTerm);
         if (selectedDoctorFilter) params.set('doctor', selectedDoctorFilter);
-        window.location.href = `/dashboard?${params.toString()}`;
+
+        await goto(`/dashboard?${params.toString()}`, { noscroll: true });
     }
+
+    // Restore scroll position after page loads
+    $effect(() => {
+        const savedScrollY = sessionStorage.getItem('dashboardScrollY');
+        if (savedScrollY) {
+            setTimeout(() => {
+                window.scrollTo(0, parseInt(savedScrollY));
+                sessionStorage.removeItem('dashboardScrollY');
+            }, 100);
+        }
+    });
 
     // Open record and log view (T14 GDPR compliance)
     function viewRecordDetail(record: any) {
@@ -141,17 +158,28 @@
                     <p class="text-sm text-gray-600 mb-1">Logic: Fetch DOCTOR.availability_json.</p>
                     <p class="text-sm text-gray-600 mb-6">State: Real-time Slot Ticker.</p>
 
-                    <!-- Doctor List with Book buttons -->
+                    <!-- Doctor List with Book buttons and availability stats -->
                     <div class="space-y-3 mb-6">
                         {#each data.doctors.slice(0, 4) as doctor}
                             <div class="flex items-center justify-between p-3 border border-gray-200 hover:border-gray-900 transition-colors">
-                                <div>
+                                <div class="flex-1">
                                     <p class="font-bold text-gray-900">{doctor.name}</p>
                                     <p class="text-sm text-gray-500">{doctor.specialty}</p>
+                                    <!-- Availability Stats (NEW) -->
+                                    <div class="flex gap-4 mt-2 text-xs">
+                                        <span class="bg-green-100 text-green-800 px-2 py-1 font-bold">
+                                            ✓ {doctor.slotStats.available} Available
+                                        </span>
+                                        {#if doctor.slotStats.booked > 0}
+                                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 font-bold">
+                                                ⚠ {doctor.slotStats.booked} Booked
+                                            </span>
+                                        {/if}
+                                    </div>
                                 </div>
-                                <a 
+                                <a
                                     href="/booking?doctor={doctor.doctor_id}"
-                                    class="bg-gray-900 text-white px-4 py-2 text-sm font-bold hover:bg-gray-800"
+                                    class="bg-gray-900 text-white px-4 py-2 text-sm font-bold hover:bg-gray-800 whitespace-nowrap"
                                 >
                                     BOOK →
                                 </a>
@@ -171,22 +199,31 @@
                         <div class="mt-6 pt-6 border-t border-gray-200">
                             <h3 class="font-bold text-gray-900 mb-3">Your Appointments</h3>
                             {#each data.appointments as appointment}
-                                <div class="flex items-center justify-between p-3 bg-blue-50 border-l-4 border-blue-600 mb-2">
-                                    <div>
-                                        <p class="text-sm font-bold">{appointment.doctor_id}</p>
-                                        <p class="text-sm text-gray-600">{formatSlotTime(appointment.slot_time)}</p>
+                                <div class="bg-blue-50 border-l-4 border-blue-600 mb-3 p-4">
+                                    <div class="flex items-start justify-between gap-2 mb-2">
+                                        <div class="flex-1">
+                                            <p class="text-sm font-bold text-gray-900">{appointment.doctor_name}</p>
+                                            <p class="text-xs text-gray-500 mb-1">{appointment.doctor_specialty}</p>
+                                            <p class="text-sm text-gray-600 font-bold">{formatSlotTime(appointment.slot_time)}</p>
+                                        </div>
+                                        {#if appointment.status === 'Active'}
+                                            <form method="POST" action="?/cancelAppointment" use:enhance>
+                                                <input type="hidden" name="app_id" value={appointment.app_id} />
+                                                <button
+                                                    type="submit"
+                                                    class="bg-red-600 text-white px-3 py-1 text-xs font-bold hover:bg-red-700 whitespace-nowrap"
+                                                    onclick={(e) => { if (!confirm('Cancel?')) e.preventDefault(); }}
+                                                >
+                                                    CANCEL
+                                                </button>
+                                            </form>
+                                        {/if}
                                     </div>
-                                    {#if appointment.status === 'Active'}
-                                        <form method="POST" action="?/cancelAppointment" use:enhance>
-                                            <input type="hidden" name="app_id" value={appointment.app_id} />
-                                            <button 
-                                                type="submit"
-                                                class="bg-red-600 text-white px-3 py-1 text-xs font-bold hover:bg-red-700"
-                                                onclick={(e) => { if (!confirm('Cancel?')) e.preventDefault(); }}
-                                            >
-                                                CANCEL
-                                            </button>
-                                        </form>
+                                    {#if appointment.reason_for_visit}
+                                        <div class="bg-white p-2 border-l-2 border-blue-400 mt-2">
+                                            <p class="text-xs text-gray-500 font-bold uppercase">Chief Complaint</p>
+                                            <p class="text-sm text-gray-700">{appointment.reason_for_visit}</p>
+                                        </div>
                                     {/if}
                                 </div>
                             {/each}

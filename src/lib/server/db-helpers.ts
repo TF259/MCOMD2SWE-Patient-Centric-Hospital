@@ -41,13 +41,29 @@ export function findDoctorById(doctorId: string): Doctor | null {
 export function getAppointmentsByNHS(nhsNumber: string): Appointment[] {
     try {
         const stmt = db.prepare(`
-            SELECT * FROM appointments 
+            SELECT * FROM appointments
             WHERE nhs_number = ? AND status = 'Active'
             ORDER BY slot_time ASC
         `);
         return stmt.all(nhsNumber) as Appointment[];
     } catch (error) {
         console.error('Error fetching appointments:', error);
+        return [];
+    }
+}
+
+export function getAppointmentsWithDoctorDetails(nhsNumber: string): (Appointment & { doctor_name: string; doctor_specialty: string })[] {
+    try {
+        const stmt = db.prepare(`
+            SELECT a.*, d.name as doctor_name, d.specialty as doctor_specialty
+            FROM appointments a
+            LEFT JOIN doctors d ON a.doctor_id = d.doctor_id
+            WHERE a.nhs_number = ? AND a.status = 'Active'
+            ORDER BY a.slot_time ASC
+        `);
+        return stmt.all(nhsNumber) as (Appointment & { doctor_name: string; doctor_specialty: string })[];
+    } catch (error) {
+        console.error('Error fetching appointments with doctor details:', error);
         return [];
     }
 }
@@ -84,19 +100,19 @@ export function createAppointment(
     }
 }
 
-export function cancelAppointment(appId: number): { success: boolean; error?: string } {
+export function cancelAppointment(appId: number, notes?: string): { success: boolean; error?: string } {
     try {
         const stmt = db.prepare(`
-            UPDATE appointments 
-            SET status = 'Cancelled' 
+            UPDATE appointments
+            SET status = 'Cancelled', completion_notes = ?
             WHERE app_id = ? AND status = 'Active'
         `);
-        const result = stmt.run(appId);
-        
+        const result = stmt.run(notes || null, appId);
+
         if (result.changes === 0) {
             return { success: false, error: 'Appointment not found or already cancelled' };
         }
-        
+
         return { success: true };
     } catch (error) {
         console.error('Error cancelling appointment:', error);
@@ -260,19 +276,19 @@ export function getDoctorAppointmentHistory(doctorId: string, limit: number = 20
 }
 
 // Mark an appointment as completed
-export function completeAppointment(appId: number): { success: boolean; error?: string } {
+export function completeAppointment(appId: number, notes?: string): { success: boolean; error?: string } {
     try {
         const stmt = db.prepare(`
-            UPDATE appointments 
-            SET status = 'Completed' 
+            UPDATE appointments
+            SET status = 'Completed', completion_notes = ?
             WHERE app_id = ? AND status = 'Active'
         `);
-        const result = stmt.run(appId);
-        
+        const result = stmt.run(notes || null, appId);
+
         if (result.changes === 0) {
             return { success: false, error: 'Appointment not found or already completed' };
         }
-        
+
         return { success: true };
     } catch (error) {
         console.error('Error completing appointment:', error);
@@ -341,7 +357,7 @@ export function getDoctorsBySpecialty(specialty: string): Doctor[] {
 export function isSlotAvailable(doctorId: string, slotTime: string): boolean {
     try {
         const stmt = db.prepare(`
-            SELECT COUNT(*) as count FROM appointments 
+            SELECT COUNT(*) as count FROM appointments
             WHERE doctor_id = ? AND slot_time = ? AND status = 'Active'
         `);
         const result = stmt.get(doctorId, slotTime) as { count: number };
@@ -349,6 +365,33 @@ export function isSlotAvailable(doctorId: string, slotTime: string): boolean {
     } catch (error) {
         console.error('Error checking slot availability:', error);
         return false;
+    }
+}
+
+// Get count of available vs booked slots for a doctor (next 7 days)
+export function getSlotStats(doctorId: string): { available: number; booked: number } {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+        // Get booked slots
+        const bookedStmt = db.prepare(`
+            SELECT COUNT(*) as count FROM appointments
+            WHERE doctor_id = ? AND status = 'Active'
+            AND slot_time >= ? AND slot_time <= ?
+        `);
+        const bookedResult = bookedStmt.get(doctorId, `${today} 00:00`, `${nextWeek} 23:59`) as { count: number };
+
+        // Calculate available (11 slots per day × 7 days = 77 slots, minus lunch breaks)
+        // Assumption: 09:00-12:00 (7 slots) + 14:00-17:30 (8 slots) = 15 slots per day
+        const totalSlots = 15 * 7; // 105 slots in 7 days
+        const bookedCount = bookedResult.count || 0;
+        const availableCount = Math.max(0, totalSlots - bookedCount);
+
+        return { available: availableCount, booked: bookedCount };
+    } catch (error) {
+        console.error('Error getting slot stats:', error);
+        return { available: 0, booked: 0 };
     }
 }
 
@@ -491,6 +534,52 @@ export function createDataExportRequest(
 }
 
 /**
+ * Delete a patient account and all associated data (GDPR Article 17)
+ */
+export function deletePatientAccount(nhsNumber: string): { success: boolean; error?: string } {
+    try {
+        // Start transaction for data integrity
+        const transaction = db.transaction(() => {
+            // Delete appointments
+            const deleteAppts = db.prepare('DELETE FROM appointments WHERE nhs_number = ?');
+            deleteAppts.run(nhsNumber);
+
+            // Delete medical records
+            const deleteRecords = db.prepare('DELETE FROM medical_records WHERE nhs_number = ?');
+            deleteRecords.run(nhsNumber);
+
+            // Delete audit logs
+            const deleteAudit = db.prepare('DELETE FROM audit_logs WHERE nhs_number = ?');
+            deleteAudit.run(nhsNumber);
+
+            // Delete data export requests
+            const deleteExports = db.prepare('DELETE FROM data_export_requests WHERE nhs_number = ?');
+            deleteExports.run(nhsNumber);
+
+            // Delete deletion requests
+            const deleteDeletion = db.prepare('DELETE FROM deletion_requests WHERE nhs_number = ?');
+            deleteDeletion.run(nhsNumber);
+
+            // Delete patient account
+            const deletePatient = db.prepare('DELETE FROM patients WHERE nhs_number = ?');
+            const result = deletePatient.run(nhsNumber);
+
+            if (result.changes === 0) {
+                throw new Error('Patient not found');
+            }
+        });
+
+        // Execute transaction
+        transaction();
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting patient account:', error);
+        return { success: false, error: 'Failed to delete patient account' };
+    }
+}
+
+/**
  * Create a deletion request (GDPR Right to Be Forgotten - Article 17)
  */
 export function createDeletionRequest(
@@ -500,20 +589,27 @@ export function createDeletionRequest(
     try {
         const stmt = db.prepare(`
             INSERT INTO deletion_requests (nhs_number, reason, status)
-            VALUES (?, ?, 'PENDING')
+            VALUES (?, ?, 'COMPLETED')
         `);
         const result = stmt.run(nhsNumber, reason || null);
+
+        // Immediately delete the account (no waiting period for demo)
+        const deleteResult = deletePatientAccount(nhsNumber);
+
+        if (!deleteResult.success) {
+            return { success: false, error: deleteResult.error };
+        }
 
         createAuditLog(
             nhsNumber,
             'DELETION_REQUEST',
-            `Patient requested account deletion. Reason: ${reason || 'Not provided'}`
+            `Account deletion request processed. Reason: ${reason || 'Not provided'}. Account has been permanently deleted.`
         );
 
         return { success: true, requestId: Number(result.lastInsertRowid) };
     } catch (error) {
         console.error('Error creating deletion request:', error);
-        return { success: false, error: 'Failed to create deletion request' };
+        return { success: false, error: 'Failed to process deletion request' };
     }
 }
 

@@ -3,12 +3,41 @@
 import db from './database';
 import bcrypt from 'bcryptjs';
 
+// Helper function to generate random addresses
+function generateRandomAddress(): string {
+    const streetNumbers = Array.from({ length: 150 }, (_, i) => i + 1);
+    const streetNames = ['Oak', 'Elm', 'Maple', 'Pine', 'Cedar', 'Birch', 'Ash', 'Willow', 'Hazel', 'Sycamore', 'Poplar', 'Linden', 'Chestnut', 'Thorn', 'Rose', 'Lily', 'Daisy', 'Ivy', 'Grove', 'Park', 'Lane', 'Road', 'Street', 'Avenue', 'Court', 'Drive'];
+    const cities = ['London', 'Kent', 'Surrey', 'Sussex', 'Essex', 'Berkshire', 'Hampshire', 'Oxfordshire', 'Buckinghamshire', 'Cambridgeshire'];
+    const postcodes = ['SW1A 1AA', 'E1 6AN', 'N1C 4BF', 'K1 2AA', 'CR2 6XH', 'SM1 1AH', 'RH1 1AA', 'BR1 1AA', 'CH43 5ER', 'LE1 1AA'];
+
+    const streetNum = streetNumbers[Math.floor(Math.random() * streetNumbers.length)];
+    const street = streetNames[Math.floor(Math.random() * streetNames.length)];
+    const city = cities[Math.floor(Math.random() * cities.length)];
+    const postcode = postcodes[Math.floor(Math.random() * postcodes.length)];
+
+    return `${streetNum} ${street} Street, ${city}, ${postcode}`;
+}
+
 export function seedDatabase() {
     // Check if already seeded
     const patientCount = db.prepare('SELECT COUNT(*) as count FROM patients').get() as { count: number };
-    
+
     if (patientCount.count > 0) {
-        console.log('⚠️  Database already seeded, skipping...');
+        console.log('⚠️  Database already seeded, checking for migrations...');
+
+        // Migration: Fill in blank addresses with random ones
+        const blankAddressCount = db.prepare("SELECT COUNT(*) as count FROM patients WHERE address IS NULL OR address = ''").get() as { count: number };
+        if (blankAddressCount.count > 0) {
+            console.log(`🔄 Migrating ${blankAddressCount.count} blank addresses...`);
+            const patients = db.prepare("SELECT nhs_number FROM patients WHERE address IS NULL OR address = ''").all() as { nhs_number: string }[];
+            const updateStmt = db.prepare('UPDATE patients SET address = ? WHERE nhs_number = ?');
+
+            patients.forEach(patient => {
+                updateStmt.run(generateRandomAddress(), patient.nhs_number);
+            });
+
+            console.log(`✅ Updated ${blankAddressCount.count} addresses`);
+        }
         return;
     }
 
@@ -25,8 +54,8 @@ export function seedDatabase() {
         VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-    insertPatient.run('1234567890', 'Arthur Retiree', '1954-05-12', '123 Care Lane, Kent', ARTHUR_HASH, '2025-10-01T10:00:00Z');
-    insertPatient.run('0987654321', 'Sarah Professional', '1997-08-22', '45 Business St, London', SARAH_HASH, '2025-10-01T10:00:00Z');
+    insertPatient.run('1234567890', 'Arthur Retiree', '1954-05-12', generateRandomAddress(), ARTHUR_HASH, '2025-10-01T10:00:00Z');
+    insertPatient.run('0987654321', 'Sarah Professional', '1997-08-22', generateRandomAddress(), SARAH_HASH, '2025-10-01T10:00:00Z');
 
     // Seed doctors - Multiple per specialty for filtering demonstration
     const insertDoctor = db.prepare(`

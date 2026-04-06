@@ -46,6 +46,22 @@
         const date = new Date(dateStr);
         return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     }
+
+    // Auto-select first available slot when availability changes
+    function autoSelectFirstAvailable() {
+        if (data.availability.length > 0) {
+            const firstAvailable = data.availability.find(s => s.status !== 'BOOKED');
+            if (firstAvailable && !selectedSlot) {
+                selectedSlot = firstAvailable.datetime;
+            }
+        }
+    }
+
+    $effect(() => {
+        if (data.selectedDoctorId && data.selectedDate) {
+            autoSelectFirstAvailable();
+        }
+    });
 </script>
 
 <div class="min-h-screen bg-gray-50">
@@ -80,12 +96,22 @@
                 </select>
             </div>
 
-            <!-- Date Constraint -->
+            <!-- Appointment Booking Guidelines -->
             <div class="border-2 border-gray-300 bg-white p-4">
-                <p class="text-xs text-gray-500 mb-1">CONSTRAINT: APPOINTMENT.SLOT_TIME</p>
-                <div class="border-2 border-gray-300 p-3 text-center">
-                    <span class="text-sm text-gray-600">Value:</span>
-                    <span class="font-bold ml-2">FUTURE_DATE_ONLY</span>
+                <p class="text-xs text-gray-500 mb-2">YOUR APPOINTMENT INFORMATION</p>
+                <div class="space-y-2 text-sm text-gray-700">
+                    <div>
+                        <p class="font-bold text-gray-900">✓ Appointment Times</p>
+                        <p class="text-gray-600">Morning: 09:00 - 12:00 | Afternoon: 14:00 - 17:00</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-900">✗ Lunch Break</p>
+                        <p class="text-gray-600">12:00 - 14:00 (Unavailable for all doctors)</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-900">📅 Future Dates Only</p>
+                        <p class="text-gray-600">Appointments can only be booked for today onwards</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -134,7 +160,16 @@
         {#if data.selectedDoctorId && data.selectedDate && data.availability.length > 0}
             <form method="POST" action="?/createAppointment" use:enhance>
                 <input type="hidden" name="doctor_id" value={data.selectedDoctorId} />
-                
+
+                <!-- Next Available Hint (moved up and highlighted) -->
+                {#if data.nextAvailable}
+                    <div class="mb-6 bg-green-100 border-2 border-green-600 p-4">
+                        <p class="text-sm font-bold text-green-900">💡 Suggestion: First available slot</p>
+                        <p class="text-base text-green-800 font-bold mt-1">{data.nextAvailable.date} at {data.nextAvailable.time}</p>
+                        <p class="text-xs text-green-700 mt-2">This slot will be pre-selected below</p>
+                    </div>
+                {/if}
+
                 <div class="mb-6">
                     <p class="text-sm font-bold text-gray-700 mb-4">AVAILABLE SLOTS FOR {formatDate(data.selectedDate).toUpperCase()}</p>
                     
@@ -213,14 +248,6 @@
         {:else if !data.selectedDoctorId}
             <div class="border-2 border-dashed border-gray-300 p-8 text-center text-gray-500">
                 <p>Select a doctor to continue booking</p>
-            </div>
-        {/if}
-
-        <!-- Next Available Slot Hint -->
-        {#if data.nextAvailable && data.selectedDoctorId}
-            <div class="mt-4 bg-green-50 border border-green-200 p-4 text-sm">
-                <span class="font-bold text-green-800">Next available:</span>
-                <span class="text-green-700 ml-2">{data.nextAvailable.date} at {data.nextAvailable.time}</span>
             </div>
         {/if}
     </main>

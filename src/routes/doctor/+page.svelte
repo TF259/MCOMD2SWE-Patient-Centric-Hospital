@@ -8,6 +8,10 @@
     let { data, form }: { data: PageData; form: ActionData } = $props();
     let isLoading = $state(true);
     let activeTab = $state<'today' | 'upcoming' | 'history'>('today');
+    let showReasonModal = $state(false);
+    let reasonModalType = $state<'complete' | 'cancel' | null>(null);
+    let reasonModalAppId = $state<number | null>(null);
+    let reasonText = $state('');
 
     // Check for success messages from URL
     let showCompleted = $derived($page.url.searchParams.get('completed') === 'true');
@@ -55,6 +59,43 @@
     // Get appointment count for today
     function getTodayCount() {
         return data.todayAppointments?.length ?? 0;
+    }
+
+    // Open reason modal for complete/cancel
+    function openReasonModal(appId: number, type: 'complete' | 'cancel') {
+        reasonModalAppId = appId;
+        reasonModalType = type;
+        reasonText = '';
+        showReasonModal = true;
+    }
+
+    // Close reason modal
+    function closeReasonModal() {
+        showReasonModal = false;
+        reasonModalAppId = null;
+        reasonModalType = null;
+        reasonText = '';
+    }
+
+    // Submit action with optional reason
+    function submitWithReason() {
+        if (!reasonModalAppId || !reasonModalType) return;
+
+        const form = new FormData();
+        form.append('app_id', reasonModalAppId.toString());
+        if (reasonText.trim()) {
+            form.append('notes', reasonText);
+        }
+
+        const action = reasonModalType === 'complete' ? '?/completeAppointment' : '?/cancelAppointment';
+
+        fetch(action, {
+            method: 'POST',
+            body: form
+        }).then(() => {
+            closeReasonModal();
+            // Page will reload via use:enhance
+        });
     }
 </script>
 
@@ -221,29 +262,20 @@
                                             </p>
                                         </div>
                                         <div class="flex gap-2">
-                                            <form method="POST" action="?/completeAppointment" use:enhance>
-                                                <input type="hidden" name="app_id" value={appointment.app_id} />
-                                                <button 
-                                                    type="submit"
-                                                    class="bg-green-700 text-white px-4 py-2 font-bold hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-yellow-400"
-                                                >
-                                                    COMPLETE
-                                                </button>
-                                            </form>
-                                            <form method="POST" action="?/cancelAppointment" use:enhance>
-                                                <input type="hidden" name="app_id" value={appointment.app_id} />
-                                                <button 
-                                                    type="submit"
-                                                    class="bg-red-600 text-white px-4 py-2 font-bold hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-yellow-400"
-                                                    onclick={(e) => {
-                                                        if (!confirm('Cancel this appointment?')) {
-                                                            e.preventDefault();
-                                                        }
-                                                    }}
-                                                >
-                                                    CANCEL
-                                                </button>
-                                            </form>
+                                            <button
+                                                type="button"
+                                                onclick={() => openReasonModal(appointment.app_id, 'complete')}
+                                                class="bg-green-700 text-white px-4 py-2 font-bold hover:bg-green-800 focus:outline-none focus:ring-4 focus:ring-yellow-400"
+                                            >
+                                                COMPLETE
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onclick={() => openReasonModal(appointment.app_id, 'cancel')}
+                                                class="bg-red-600 text-white px-4 py-2 font-bold hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-yellow-400"
+                                            >
+                                                CANCEL
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -284,20 +316,13 @@
                                             </p>
                                         </div>
                                         <div class="flex gap-2">
-                                            <form method="POST" action="?/cancelAppointment" use:enhance>
-                                                <input type="hidden" name="app_id" value={appointment.app_id} />
-                                                <button 
-                                                    type="submit"
-                                                    class="bg-red-600 text-white px-4 py-2 font-bold hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-yellow-400"
-                                                    onclick={(e) => {
-                                                        if (!confirm('Cancel this appointment?')) {
-                                                            e.preventDefault();
-                                                        }
-                                                    }}
-                                                >
-                                                    CANCEL
-                                                </button>
-                                            </form>
+                                            <button
+                                                type="button"
+                                                onclick={() => openReasonModal(appointment.app_id, 'cancel')}
+                                                class="bg-red-600 text-white px-4 py-2 font-bold hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-yellow-400"
+                                            >
+                                                CANCEL
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -368,6 +393,52 @@
                     <li>✓ Cancel appointments (Story 10: Admin functionality)</li>
                 </ul>
             </aside>
+        </div>
+    </div>
+{/if}
+
+<!-- Reason Modal (Optional feedback/notes for complete/cancel) -->
+{#if showReasonModal && reasonModalAppId !== null && reasonModalType !== null}
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white border-4 border-gray-900 max-w-md w-full shadow-2xl">
+            <div class="bg-gray-900 text-white px-6 py-4 font-bold text-lg">
+                {reasonModalType === 'complete' ? '✓ COMPLETE APPOINTMENT' : '✗ CANCEL APPOINTMENT'}
+            </div>
+            <div class="p-6">
+                <p class="text-gray-700 mb-4">
+                    {reasonModalType === 'complete'
+                        ? 'Add optional notes about this appointment completion:'
+                        : 'Add optional reason for cancellation:'}
+                </p>
+                <textarea
+                    placeholder={reasonModalType === 'complete'
+                        ? 'e.g., Appointment completed successfully. Patient in good health.'
+                        : 'e.g., Doctor emergency, please reschedule.'}
+                    rows="4"
+                    bind:value={reasonText}
+                    class="w-full border-2 border-gray-300 p-3 font-normal bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                ></textarea>
+                <p class="text-xs text-gray-500 mt-2">(Optional - leave blank to skip)</p>
+
+                <div class="flex gap-3 mt-6">
+                    <button
+                        type="button"
+                        onclick={closeReasonModal}
+                        class="flex-1 border-2 border-gray-300 px-4 py-3 font-bold text-gray-900 hover:bg-gray-100"
+                    >
+                        CANCEL
+                    </button>
+                    <button
+                        type="button"
+                        onclick={submitWithReason}
+                        class={reasonModalType === 'complete'
+                            ? 'flex-1 bg-green-700 text-white px-4 py-3 font-bold hover:bg-green-800'
+                            : 'flex-1 bg-red-600 text-white px-4 py-3 font-bold hover:bg-red-700'}
+                    >
+                        {reasonModalType === 'complete' ? 'COMPLETE' : 'CANCEL'} APPOINTMENT
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 {/if}

@@ -4,11 +4,12 @@ import {
     getAllDoctors,
     getMedicalRecordsByNHS,
     searchMedicalRecords,
-    getAppointmentsByNHS,
+    getAppointmentsWithDoctorDetails,
     cancelAppointment as dbCancelAppointment,
     createAuditLog,
     logRecordView,
-    getPatientDetails
+    getPatientDetails,
+    getSlotStats
 } from '$lib/server/db-helpers';
 import { destroySession } from '../../hooks.server';
 import { redirect } from '@sveltejs/kit';
@@ -60,14 +61,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
         );
     }
 
-    // Get patient's appointments
-    const patientAppointments = getAppointmentsByNHS(session.nhs_number);
+    // Get patient's appointments with doctor details
+    const patientAppointments = getAppointmentsWithDoctorDetails(session.nhs_number);
+
+    // Get all doctors with slot availability stats
+    const allDoctors = getAllDoctors();
+    const doctorsWithStats = allDoctors.map(doctor => ({
+        ...doctor,
+        slotStats: getSlotStats(doctor.doctor_id)
+    }));
 
     return {
         patient_name: session.full_name,
         patient: patientDetails,
         nhs_number: session.nhs_number,
-        doctors: getAllDoctors(),
+        doctors: doctorsWithStats,
         medicalRecords,
         appointments: patientAppointments,
         recordCount: medicalRecords.length,

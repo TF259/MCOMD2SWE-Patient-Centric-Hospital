@@ -82,25 +82,26 @@ export const actions = {
 
     completeAppointment: async ({ request, locals }) => {
         const session = locals.session;
-        
+
         if (!session || session.type !== 'doctor') {
             throw redirect(303, '/');
         }
 
         const data = await request.formData();
         const appId = parseInt(data.get('app_id') as string);
+        const notes = data.get('notes') as string | null;
 
-        const result = dbCompleteAppointment(appId);
-        
+        const result = dbCompleteAppointment(appId, notes || undefined);
+
         if (!result.success) {
             return fail(400, { error: result.error });
         }
 
         // Audit log for completion
         createAuditLog(
-            session.doctor_id,
+            session.nhs_number || session.doctor_id,
             'COMPLETE_APPOINTMENT',
-            `Doctor ${session.name} marked appointment #${appId} as completed`
+            `Doctor ${session.name} marked appointment #${appId} as completed${notes ? `. Notes: ${notes}` : ''}`
         );
 
         throw redirect(303, '/doctor?completed=true');
@@ -108,25 +109,26 @@ export const actions = {
 
     cancelAppointment: async ({ request, locals }) => {
         const session = locals.session;
-        
+
         if (!session || session.type !== 'doctor') {
             throw redirect(303, '/');
         }
 
         const data = await request.formData();
         const appId = parseInt(data.get('app_id') as string);
+        const notes = data.get('notes') as string | null;
 
-        const result = dbCancelAppointment(appId);
-        
+        const result = dbCancelAppointment(appId, notes || undefined);
+
         if (!result.success) {
             return fail(400, { error: result.error });
         }
 
         // Audit log for cancellation
         createAuditLog(
-            session.doctor_id,
+            session.nhs_number || session.doctor_id,
             'CANCEL_APPOINTMENT',
-            `Doctor ${session.name} cancelled appointment #${appId}`
+            `Doctor ${session.name} cancelled appointment #${appId}${notes ? `. Reason: ${notes}` : ''}`
         );
 
         throw redirect(303, '/doctor?cancelled=true');
