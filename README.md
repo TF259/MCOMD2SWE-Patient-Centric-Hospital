@@ -1,42 +1,20 @@
-# sv
+# CarePoint Hospital System
+A Patient-Centric Hospital Management System.
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+## 🚀 Project Overview
+This is a patient-centric system designed to prioritize self-service through a dynamic appointment booking interface and a secure medical records portal.
 
-## Creating a project
+### 📃 Tech Stack
+- Module: MCOMD2SWE - Software Engineering
+- Tech Stack: SvelteKit, TypeScript, database TBA
+- Deployment: Hosted on cPanel
 
-If you're seeing this, you've probably already done this step. Congrats!
+### 🛠 Features
+- Secure Patient Portal: Private access to medical records.
+- Real-time Calendar: Instant visibility of doctor availability.
+- Dynamic Booking: Seamless interface for scheduling appointments.
 
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-npx sv@0.13.2 create --template minimal --types ts --add prettier vitest="usages:unit,component" eslint playwright tailwindcss="plugins:typography,forms" sveltekit-adapter="adapter:node" --install npm .
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+### 📈 Agile Methodology
+This project utilizes the Scrum Framework, documenting progression through:
+* Sprint 1: Planning & Design: Requirement engineering, User Stories, and UML architectural design.
+* Sprint 2: Core Build & Testing: Full development of the patient portal, booking interface, and rigorous unit testing.
