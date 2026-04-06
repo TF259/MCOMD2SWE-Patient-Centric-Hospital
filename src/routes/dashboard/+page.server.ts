@@ -108,7 +108,8 @@ export const actions = {
         const data = await request.formData();
         const app_id = parseInt(data.get('app_id') as string);
 
-        const result = dbCancelAppointment(app_id);
+        // Pass NHS number to verify ownership
+        const result = dbCancelAppointment(app_id, session.nhs_number);
         
         if (!result.success) {
             return { error: result.error };

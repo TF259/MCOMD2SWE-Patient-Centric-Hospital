@@ -126,8 +126,6 @@ export function initializeDatabase() {
     } catch (e) {
         // Column already exists
     }
-
-    console.log('✅ Database schema initialized');
 }
 
 // Initialize on module load

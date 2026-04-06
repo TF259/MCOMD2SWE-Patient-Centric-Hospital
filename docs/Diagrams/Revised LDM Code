@@ -1,0 +1,68 @@
+erDiagram
+    PATIENT ||--o{ APPOINTMENT : "books"
+    DOCTOR ||--o{ APPOINTMENT : "attends"
+    PATIENT ||--o{ MEDICAL_RECORD : "owns"
+    DOCTOR ||--o{ MEDICAL_RECORD : "authors"
+    PATIENT ||--o{ AUDIT_LOG : "triggers"
+    PATIENT ||--o{ DATA_EXPORT_REQUEST : "initiates"
+    PATIENT ||--o{ DELETION_REQUEST : "requests"
+    
+    PATIENT {
+        string nhs_number PK
+        string full_name
+        date dob
+        string address
+        string password_hash
+        datetime created_at
+    }
+    
+    DOCTOR {
+        string doctor_id PK
+        string name
+        string specialty
+        string availability_json
+        string password_hash
+    }
+    
+    APPOINTMENT {
+        int app_id PK
+        string nhs_number FK
+        string doctor_id FK
+        datetime slot_time
+        string reason_for_visit "Story 03"
+        string completion_notes "Story 05"
+        string status
+        datetime created_at
+    }
+    
+    MEDICAL_RECORD {
+        int record_id PK
+        string nhs_number FK
+        string doctor_id FK
+        string notes
+        date entry_date
+    }
+
+    AUDIT_LOG {
+        int log_id PK
+        string nhs_number FK
+        string action
+        string details
+        datetime timestamp
+    }
+
+    DATA_EXPORT_REQUEST {
+        int request_id PK
+        string nhs_number FK
+        string format
+        string status
+        datetime created_at
+    }
+
+    DELETION_REQUEST {
+        int request_id PK
+        string nhs_number FK
+        string reason
+        string status
+        datetime created_at
+    }

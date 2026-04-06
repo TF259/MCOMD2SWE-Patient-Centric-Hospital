@@ -67,14 +67,32 @@ export function validateAppointmentDate(slotTime: string): ValidationResult {
 
 /**
  * Validates password strength (NFR1: Security)
+ * Minimum 8 characters, at least one uppercase, one lowercase, one number
  */
 export function validatePassword(password: string): ValidationResult {
     if (!password) {
         return { valid: false, error: 'Password is required' };
     }
 
-    if (password.length < 6) {
-        return { valid: false, error: 'Password must be at least 6 characters' };
+    const minLength = parseInt(process.env.MIN_PASSWORD_LENGTH || '8', 10);
+    
+    if (password.length < minLength) {
+        return { valid: false, error: `Password must be at least ${minLength} characters` };
+    }
+
+    // Require at least one uppercase letter
+    if (!/[A-Z]/.test(password)) {
+        return { valid: false, error: 'Password must contain at least one uppercase letter' };
+    }
+
+    // Require at least one lowercase letter
+    if (!/[a-z]/.test(password)) {
+        return { valid: false, error: 'Password must contain at least one lowercase letter' };
+    }
+
+    // Require at least one number
+    if (!/[0-9]/.test(password)) {
+        return { valid: false, error: 'Password must contain at least one number' };
     }
 
     return { valid: true };

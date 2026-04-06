@@ -15,9 +15,6 @@ import '$lib/server/db-seed';
 
 export const load: PageServerLoad = async ({ locals }) => {
     const startTime = performance.now();
-    
-    // Simulate realistic load time for NFR2 demonstration
-    await new Promise(resolve => setTimeout(resolve, 300));
 
     const session = locals.session;
     
@@ -99,7 +96,7 @@ export const actions = {
 
         // Audit log for completion
         createAuditLog(
-            session.nhs_number || session.doctor_id,
+            session.doctor_id,
             'COMPLETE_APPOINTMENT',
             `Doctor ${session.name} marked appointment #${appId} as completed${notes ? `. Notes: ${notes}` : ''}`
         );
@@ -118,7 +115,8 @@ export const actions = {
         const appId = parseInt(data.get('app_id') as string);
         const notes = data.get('notes') as string | null;
 
-        const result = dbCancelAppointment(appId, notes || undefined);
+        // Doctors can cancel any appointment (no ownership check needed)
+        const result = dbCancelAppointment(appId, undefined, notes || undefined);
 
         if (!result.success) {
             return fail(400, { error: result.error });
@@ -126,7 +124,7 @@ export const actions = {
 
         // Audit log for cancellation
         createAuditLog(
-            session.nhs_number || session.doctor_id,
+            session.doctor_id,
             'CANCEL_APPOINTMENT',
             `Doctor ${session.name} cancelled appointment #${appId}${notes ? `. Reason: ${notes}` : ''}`
         );

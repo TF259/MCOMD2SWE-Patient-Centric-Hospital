@@ -4,15 +4,26 @@ import { findPatientByNHS, findDoctorById, createAuditLog } from '$lib/server/db
 import { validateNHSNumber } from '$lib/server/validation';
 import bcrypt from 'bcryptjs'; // CRITICAL: Required for NFR1
 import type { Actions } from './$types';
-import { createSession, createDoctorSession } from '../hooks.server';
+import { createSession, createDoctorSession, isRateLimited, recordFailedLogin, clearLoginAttempts } from '../hooks.server';
 import '$lib/server/db-seed'; // Ensure database is initialized
 
 export const actions = {
     // Patient login action
-    login: async ({ request, cookies }) => {
+    login: async ({ request, cookies, getClientAddress }) => {
+        const clientIP = getClientAddress();
         const data = await request.formData();
         const nhs_number = data.get('nhs_number') as string;
         const password = data.get('password') as string;
+
+        // Rate limiting check
+        const rateLimitKey = `patient:${clientIP}`;
+        if (isRateLimited(rateLimitKey)) {
+            return fail(429, {
+                error: 'Too many login attempts. Please try again in 15 minutes.',
+                nhs_number,
+                loginType: 'patient'
+            });
+        }
 
         // Input validation (NFR1: Security)
         const nhsValidation = validateNHSNumber(nhs_number);
@@ -28,11 +39,14 @@ export const actions = {
 
         // Technical Logic: Use bcrypt.compare for secure auth (NFR1)
         if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+            // Record failed attempt for rate limiting
+            recordFailedLogin(rateLimitKey);
+            
             // T14: Log the security event (Failed Login) for clinical audit trail (NFR1)
             createAuditLog(
                 nhs_number || 'UNKNOWN',
                 'FAILED_LOGIN_ATTEMPT',
-                `Failed login attempt for NHS Number: ${nhs_number}`
+                'Failed login attempt'
             );
 
             return fail(400, { 
@@ -41,6 +55,9 @@ export const actions = {
                 loginType: 'patient'
             });
         }
+
+        // Clear rate limit on successful login
+        clearLoginAttempts(rateLimitKey);
 
         // T14: Log successful login for GDPR compliance (NFR1)
         createAuditLog(
@@ -54,7 +71,7 @@ export const actions = {
             path: '/',
             httpOnly: true,
             sameSite: 'strict',
-            secure: false, // Set to true in production
+            secure: process.env.NODE_ENV === 'production',
             maxAge: 60 * 60 * 24 * 7 
         });
 
@@ -62,10 +79,20 @@ export const actions = {
     },
 
     // Doctor login action (Story 05: As a Doctor, I want to view my daily bookings)
-    doctorLogin: async ({ request, cookies }) => {
+    doctorLogin: async ({ request, cookies, getClientAddress }) => {
+        const clientIP = getClientAddress();
         const data = await request.formData();
         const doctor_id = data.get('doctor_id') as string;
         const password = data.get('password') as string;
+
+        // Rate limiting check
+        const rateLimitKey = `doctor:${clientIP}`;
+        if (isRateLimited(rateLimitKey)) {
+            return fail(429, {
+                error: 'Too many login attempts. Please try again in 15 minutes.',
+                loginType: 'doctor'
+            });
+        }
 
         if (!doctor_id || doctor_id.trim() === '') {
             return fail(400, { 
@@ -85,10 +112,13 @@ export const actions = {
 
         // NFR1: Secure authentication - verify password with bcrypt
         if (!doctor || !doctor.password_hash || !(await bcrypt.compare(password, doctor.password_hash))) {
+            // Record failed attempt for rate limiting
+            recordFailedLogin(rateLimitKey);
+            
             createAuditLog(
                 doctor_id || 'UNKNOWN',
                 'FAILED_DOCTOR_LOGIN',
-                `Failed doctor login attempt for ID: ${doctor_id}`
+                'Failed doctor login attempt'
             );
 
             return fail(400, { 
@@ -97,14 +127,17 @@ export const actions = {
             });
         }
 
+        // Clear rate limit on successful login
+        clearLoginAttempts(rateLimitKey);
+
         // Create doctor session
         const sessionId = createDoctorSession(doctor.doctor_id, doctor.name, doctor.specialty);
         
         cookies.set('session_id', sessionId, {
             path: '/',
             httpOnly: true,
-            sameSite: 'lax',
-            secure: false,
+            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production',
             maxAge: 60 * 60 * 24
         });
 

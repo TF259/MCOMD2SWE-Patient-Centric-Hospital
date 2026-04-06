@@ -3,6 +3,9 @@
 import db from './database';
 import bcrypt from 'bcryptjs';
 
+// Only seed in development - skip in production
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 // Helper function to generate random addresses
 function generateRandomAddress(): string {
     const streetNumbers = Array.from({ length: 150 }, (_, i) => i + 1);
@@ -19,42 +22,40 @@ function generateRandomAddress(): string {
 }
 
 export function seedDatabase() {
+    // Skip seeding in production unless explicitly allowed
+    if (IS_PRODUCTION && !process.env.ALLOW_SEED_IN_PRODUCTION) {
+        return;
+    }
+
     // Check if already seeded
     const patientCount = db.prepare('SELECT COUNT(*) as count FROM patients').get() as { count: number };
 
     if (patientCount.count > 0) {
-        console.log('⚠️  Database already seeded, checking for migrations...');
-
         // Migration: Fill in blank or null addresses with random ones
         try {
             const blankAddressesSql = "SELECT COUNT(*) as count FROM patients WHERE address IS NULL OR address = '' OR address LIKE '%null%'";
             const blankAddressCount = db.prepare(blankAddressesSql).get() as { count: number };
 
             if (blankAddressCount.count > 0) {
-                console.log(`🔄 Migrating ${blankAddressCount.count} blank/missing addresses...`);
                 const patients = db.prepare("SELECT nhs_number FROM patients WHERE address IS NULL OR address = '' OR address LIKE '%null%'").all() as { nhs_number: string }[];
                 const updateStmt = db.prepare('UPDATE patients SET address = ? WHERE nhs_number = ?');
 
                 patients.forEach(patient => {
                     const newAddress = generateRandomAddress();
-                    console.log(`  - Assigning address to ${patient.nhs_number}: ${newAddress}`);
                     updateStmt.run(newAddress, patient.nhs_number);
                 });
-
-                console.log(`✅ Updated ${blankAddressCount.count} addresses`);
             }
-        } catch (error) {
-            console.log('Migration check completed');
+        } catch {
+            // Migration check completed
         }
         return;
     }
 
-    console.log('🌱 Seeding database with initial data...');
-
     // Generate password hashes (NFR1: Secure auth with bcrypt)
-    const ARTHUR_HASH = bcrypt.hashSync('SecurePass123!', 10);
-    const SARAH_HASH = bcrypt.hashSync('SarahSecure456!', 10);
-    const DOCTOR_HASH = bcrypt.hashSync('DoctorPass123!', 10);
+    // NOTE: In production, use environment variables for default credentials
+    const ARTHUR_HASH = bcrypt.hashSync(process.env.SEED_PATIENT_PASSWORD || 'SecurePass123!', 10);
+    const SARAH_HASH = bcrypt.hashSync(process.env.SEED_PATIENT_PASSWORD_2 || 'SarahSecure456!', 10);
+    const DOCTOR_HASH = bcrypt.hashSync(process.env.SEED_DOCTOR_PASSWORD || 'DoctorPass123!', 10);
 
     // Seed patients
     const insertPatient = db.prepare(`
@@ -146,8 +147,6 @@ export function seedDatabase() {
     `);
 
     insertAudit.run('1234567890', 'VIEW_RECORDS', '2025-11-10T14:30:00Z', 'Initial record access');
-
-    console.log('✅ Database seeded with 8 doctors across 5 specialties');
 }
 
 // Auto-seed on import (run once)

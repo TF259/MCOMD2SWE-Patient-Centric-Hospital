@@ -100,14 +100,27 @@ export function createAppointment(
     }
 }
 
-export function cancelAppointment(appId: number, notes?: string): { success: boolean; error?: string } {
+export function cancelAppointment(appId: number, nhsNumber?: string, notes?: string): { success: boolean; error?: string } {
     try {
-        const stmt = db.prepare(`
+        // Build query - if nhsNumber provided, verify ownership
+        let query = `
             UPDATE appointments
             SET status = 'Cancelled', completion_notes = ?
             WHERE app_id = ? AND status = 'Active'
-        `);
-        const result = stmt.run(notes || null, appId);
+        `;
+        const params: (string | number | null)[] = [notes || null, appId];
+        
+        if (nhsNumber) {
+            query = `
+                UPDATE appointments
+                SET status = 'Cancelled', completion_notes = ?
+                WHERE app_id = ? AND status = 'Active' AND nhs_number = ?
+            `;
+            params.push(nhsNumber);
+        }
+        
+        const stmt = db.prepare(query);
+        const result = stmt.run(...params);
 
         if (result.changes === 0) {
             return { success: false, error: 'Appointment not found or already cancelled' };
@@ -654,16 +667,19 @@ export function getDeletionRequests(nhsNumber: string) {
 // ============= PATIENT REGISTRATION (Story 07) =============
 
 /**
- * Generate unique NHS number
+ * Generate unique NHS number using cryptographically secure random
  * AC 7.1: System must generate a unique nhs_number PK upon successful registration
  */
 export function generateUniqueNHSNumber(): string {
     let nhsNumber = '';
     let isUnique = false;
+    const crypto = require('crypto');
 
     while (!isUnique) {
-        // Generate random 10-digit number
-        nhsNumber = Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+        // Generate cryptographically secure random 10-digit number
+        const randomBytes = crypto.randomBytes(5);
+        const randomNum = parseInt(randomBytes.toString('hex'), 16) % 10000000000;
+        nhsNumber = randomNum.toString().padStart(10, '0');
 
         // Check if it already exists
         const stmt = db.prepare('SELECT COUNT(*) as count FROM patients WHERE nhs_number = ?');
